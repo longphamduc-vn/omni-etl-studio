@@ -1,0 +1,90 @@
+2026-08-13 06:49:16.922 | INFO     | core.registry.workflow_registry:_load_catalog:34 - Registered 2 workflows from catalog.
+2026-08-13 06:49:16.955 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_e2e_test_academic
+2026-08-13 06:49:16.957 | INFO     | core.engine.runner:run:120 - Starting execution of pipeline 'academic_student_score_chained' (Run ID: e2e_test_academic)
+2026-08-13 06:49:16.958 | INFO     | core.engine.runner:execute_step:36 - Executing step [fetch_student_list] in 'batch' mode via driver 'nexacro'
+2026-08-13 06:49:17.013 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 3 records.
+2026-08-13 06:49:17.028 | INFO     | core.engine.runner:_execute_batch_step:70 - Completed batch step [fetch_student_list]. Saved output table 'active_students'.
+2026-08-13 06:49:17.029 | INFO     | core.engine.runner:execute_step:36 - Executing step [fetch_scores_chained] in 'chained_loop' mode via driver 'nexacro'
+2026-08-13 06:49:17.059 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 2 records.
+2026-08-13 06:49:17.085 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 2 records.
+2026-08-13 06:49:17.106 | INFO     | core.engine.runner:_execute_chained_loop_step:111 - Completed chained_loop step [fetch_scores_chained] across 2 iterations.
+2026-08-13 06:49:17.106 | INFO     | core.engine.runner:run:126 - Pipeline 'academic_student_score_chained' executed successfully.
+2026-08-13 06:49:17.114 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_e2e_test_academic
+2026-08-13 06:49:17.136 | INFO     | core.registry.workflow_registry:_load_catalog:34 - Registered 2 workflows from catalog.
+2026-08-13 06:49:17.163 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_e2e_test_inventory
+2026-08-13 06:49:17.164 | INFO     | core.engine.runner:run:120 - Starting execution of pipeline 'inventory_batch_sync' (Run ID: e2e_test_inventory)
+2026-08-13 06:49:17.164 | INFO     | core.engine.runner:execute_step:36 - Executing step [sync_warehouse_items] in 'batch' mode via driver 'nexacro'
+2026-08-13 06:49:17.191 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 3 records.
+2026-08-13 06:49:17.206 | INFO     | core.engine.runner:_execute_batch_step:70 - Completed batch step [sync_warehouse_items]. Saved output table 'category_inventory_summary'.
+2026-08-13 06:49:17.207 | INFO     | core.engine.runner:run:126 - Pipeline 'inventory_batch_sync' executed successfully.
+2026-08-13 06:49:17.216 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_e2e_test_inventory
+2026-08-13 06:49:17.725 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_pipe_001
+2026-08-13 06:49:17.726 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_pipe_002
+2026-08-13 06:49:17.746 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_pipe_001
+2026-08-13 06:49:17.747 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_pipe_002
+2026-08-13 06:49:17.772 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_context
+2026-08-13 06:49:17.787 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_context
+2026-08-13 06:49:17.814 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 06:49:17.834 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 06:49:17.863 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 06:49:17.881 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 06:49:17.912 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 06:49:17.931 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 06:49:17.956 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 06:49:17.980 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 06:49:18.027 | WARNING  | core.engine.filter:apply_filters:26 - Filter field 'non_existent_column' not found in DataFrame columns. Skipping rule.
+2026-08-13 06:49:18.077 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_test_suite
+2026-08-13 06:49:18.099 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_test_suite
+2026-08-13 06:49:18.124 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_test_suite
+2026-08-13 06:49:18.141 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_test_suite
+2026-08-13 06:49:18.167 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_runner_test
+2026-08-13 06:49:18.168 | INFO     | core.engine.runner:run:120 - Starting execution of pipeline 'unit_test_wf' (Run ID: unit_runner_test)
+2026-08-13 06:49:18.168 | INFO     | core.engine.runner:execute_step:36 - Executing step [step1] in 'batch' mode via driver 'nexacro'
+2026-08-13 06:49:18.181 | INFO     | core.engine.runner:_execute_batch_step:70 - Completed batch step [step1]. Saved output table 'result_step1'.
+2026-08-13 06:49:18.181 | INFO     | core.engine.runner:run:126 - Pipeline 'unit_test_wf' executed successfully.
+2026-08-13 06:49:18.184 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_runner_test
+2026-08-13 07:19:17.498 | INFO     | core.registry.workflow_registry:_load_catalog:34 - Registered 2 workflows from catalog.
+2026-08-13 07:19:17.530 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_e2e_test_academic
+2026-08-13 07:19:17.532 | INFO     | core.engine.runner:run:120 - Starting execution of pipeline 'academic_student_score_chained' (Run ID: e2e_test_academic)
+2026-08-13 07:19:17.532 | INFO     | core.engine.runner:execute_step:36 - Executing step [fetch_student_list] in 'batch' mode via driver 'nexacro'
+2026-08-13 07:19:17.581 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 3 records.
+2026-08-13 07:19:17.595 | INFO     | core.engine.runner:_execute_batch_step:70 - Completed batch step [fetch_student_list]. Saved output table 'active_students'.
+2026-08-13 07:19:17.596 | INFO     | core.engine.runner:execute_step:36 - Executing step [fetch_scores_chained] in 'chained_loop' mode via driver 'nexacro'
+2026-08-13 07:19:17.634 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 2 records.
+2026-08-13 07:19:17.660 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 2 records.
+2026-08-13 07:19:17.681 | INFO     | core.engine.runner:_execute_chained_loop_step:111 - Completed chained_loop step [fetch_scores_chained] across 2 iterations.
+2026-08-13 07:19:17.682 | INFO     | core.engine.runner:run:126 - Pipeline 'academic_student_score_chained' executed successfully.
+2026-08-13 07:19:17.695 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_e2e_test_academic
+2026-08-13 07:19:17.721 | INFO     | core.registry.workflow_registry:_load_catalog:34 - Registered 2 workflows from catalog.
+2026-08-13 07:19:17.750 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_e2e_test_inventory
+2026-08-13 07:19:17.751 | INFO     | core.engine.runner:run:120 - Starting execution of pipeline 'inventory_batch_sync' (Run ID: e2e_test_inventory)
+2026-08-13 07:19:17.752 | INFO     | core.engine.runner:execute_step:36 - Executing step [sync_warehouse_items] in 'batch' mode via driver 'nexacro'
+2026-08-13 07:19:17.781 | INFO     | drivers.nexacro:execute:54 - Successfully executed Nexacro request. Parsed 3 records.
+2026-08-13 07:19:17.797 | INFO     | core.engine.runner:_execute_batch_step:70 - Completed batch step [sync_warehouse_items]. Saved output table 'category_inventory_summary'.
+2026-08-13 07:19:17.798 | INFO     | core.engine.runner:run:126 - Pipeline 'inventory_batch_sync' executed successfully.
+2026-08-13 07:19:17.806 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_e2e_test_inventory
+2026-08-13 07:19:18.308 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_pipe_001
+2026-08-13 07:19:18.309 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_pipe_002
+2026-08-13 07:19:18.328 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_pipe_001
+2026-08-13 07:19:18.329 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_pipe_002
+2026-08-13 07:19:18.355 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_context
+2026-08-13 07:19:18.373 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_context
+2026-08-13 07:19:18.398 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 07:19:18.422 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 07:19:18.452 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 07:19:18.474 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 07:19:18.502 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 07:19:18.521 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 07:19:18.550 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_test_operators
+2026-08-13 07:19:18.577 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_test_operators
+2026-08-13 07:19:18.637 | WARNING  | core.engine.filter:apply_filters:26 - Filter field 'non_existent_column' not found in DataFrame columns. Skipping rule.
+2026-08-13 07:19:18.718 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_test_suite
+2026-08-13 07:19:18.737 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_test_suite
+2026-08-13 07:19:18.765 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_test_suite
+2026-08-13 07:19:18.783 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_test_suite
+2026-08-13 07:19:18.809 | INFO     | core.storage.context:_init_schema:26 - Initializing isolated DuckDB schema: ns_unit_runner_test
+2026-08-13 07:19:18.811 | INFO     | core.engine.runner:run:120 - Starting execution of pipeline 'unit_test_wf' (Run ID: unit_runner_test)
+2026-08-13 07:19:18.811 | INFO     | core.engine.runner:execute_step:36 - Executing step [step1] in 'batch' mode via driver 'nexacro'
+2026-08-13 07:19:18.821 | INFO     | core.engine.runner:_execute_batch_step:70 - Completed batch step [step1]. Saved output table 'result_step1'.
+2026-08-13 07:19:18.822 | INFO     | core.engine.runner:run:126 - Pipeline 'unit_test_wf' executed successfully.
+2026-08-13 07:19:18.827 | INFO     | core.storage.context:close:62 - Cleaned up DuckDB isolated schema: ns_unit_runner_test

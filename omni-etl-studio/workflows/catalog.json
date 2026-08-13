@@ -1,0 +1,6 @@
+{
+  "workflows": {
+    "academic_student_score_chained": "academic/student_score_chained.json",
+    "inventory_batch_sync": "inventory/inventory_batch_sync.json"
+  }
+}
