@@ -1,49 +1,62 @@
-import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from config.settings import settings
 from core.common.exceptions import WorkflowValidationError
+from core.common.logger import log
 from core.common.schemas import WorkflowConfig
 from core.registry.validator import WorkflowValidator
-from core.common.logger import log
 
 
 class WorkflowRegistry:
-    """Master catalog registry loader managing declarative JSON workflow configurations."""
+    """Registry managing workflow definitions by dynamically scanning JSON files in workflows directory."""
 
-    def __init__(self, catalog_path: Optional[Path] = None):
-        self.catalog_path = catalog_path or (settings.WORKFLOWS_DIR / "catalog.json")
-        self._registry: Dict[str, Path] = {}
-        self._load_catalog()
+        def __init__(self, workflows_dir: Optional[Path] = None):
+                self.workflows_dir = workflows_dir or settings.WORKFLOWS_DIR
+                        self._registry: Dict[str, WorkflowConfig] = {}
+                                self._scan_and_load_workflows()
 
-    def _load_catalog(self):
-        """Scans catalog.json and registers all workflow configuration paths."""
-        if not self.catalog_path.exists():
-            log.warning(f"Catalog file not found at {self.catalog_path}. Initializing empty registry.")
-            return
+                                    def _scan_and_load_workflows(self) -> None:
+                                            """Recursively scans the workflows directory for any *.json files and validates them."""
+                                                    self._registry.clear()
+                                                            
+                                                                    if not self.workflows_dir.exists():
+                                                                                log.warning(f"Workflows directory does not exist: {self.workflows_dir}")
+                                                                                            return
 
-        try:
-            with open(self.catalog_path, "r", encoding="utf-8") as f:
-                catalog_data = json.load(f)
+                                                                                                    # Quét tất cả file .json ngoại trừ catalog.json (nếu còn sót lại)
+                                                                                                            json_files = list(self.workflows_dir.glob("**/*.json"))
+                                                                                                                    
+                                                                                                                            for file_path in json_files:
+                                                                                                                                        if file_path.name == "catalog.json":
+                                                                                                                                                        continue
+                                                                                                                                                                        
+                                                                                                                                                                                    try:
+                                                                                                                                                                                                    wf_config = WorkflowValidator.validate_file(str(file_path))
+                                                                                                                                                                                                                    if wf_config.workflow_id in self._registry:
+                                                                                                                                                                                                                                        log.warning(
+                                                                                                                                                                                                                                                                f"Duplicate workflow_id '{wf_config.workflow_id}' found in {file_path}. "
+                                                                                                                                                                                                                                                                                        f"Overwriting previous definition."
+                                                                                                                                                                                                                                                                                                            )
+                                                                                                                                                                                                                                                                                                                            self._registry[wf_config.workflow_id] = wf_config
+                                                                                                                                                                                                                                                                                                                                            log.debug(f"Loaded workflow [{wf_config.workflow_id}] from {file_path}")
+                                                                                                                                                                                                                                                                                                                                                        except WorkflowValidationError as e:
+                                                                                                                                                                                                                                                                                                                                                                        log.error(f"Skipping invalid workflow file {file_path}: {str(e)}")
 
-            workflows = catalog_data.get("workflows", {})
-            for w_id, rel_path in workflows.items():
-                full_path = settings.WORKFLOWS_DIR / rel_path
-                self._registry[w_id] = full_path
+                                                                                                                                                                                                                                                                                                                                                                                log.info(f"Successfully loaded {len(self._registry)} workflows directly from JSON files.")
 
-            log.info(f"Registered {len(self._registry)} workflows from catalog.")
+                                                                                                                                                                                                                                                                                                                                                                                    def get_workflow(self, workflow_id: str) -> WorkflowConfig:
+                                                                                                                                                                                                                                                                                                                                                                                            """Retrieves a validated WorkflowConfig by workflow_id."""
+                                                                                                                                                                                                                                                                                                                                                                                                    if workflow_id not in self._registry:
+                                                                                                                                                                                                                                                                                                                                                                                                                # Thử scan lại một lần nữa phòng trường hợp file mới được thêm vào lúc runtime
+                                                                                                                                                                                                                                                                                                                                                                                                                            self._scan_and_load_workflows()
+                                                                                                                                                                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                                                                                                                                                                                if workflow_id not in self._registry:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            raise WorkflowValidationError(f"Workflow [{workflow_id}] not found in workflows directory.")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            return self._registry[workflow_id]
 
-        except Exception as e:
-            raise WorkflowValidationError(f"Failed to initialize WorkflowRegistry: {str(e)}")
-
-    def get_workflow(self, workflow_id: str) -> WorkflowConfig:
-        """Fetches and validates a registered workflow by its ID."""
-        if workflow_id not in self._registry:
-            raise WorkflowValidationError(f"Workflow ID '{workflow_id}' is not registered in catalog.")
-
-        file_path = self._registry[workflow_id]
-        return WorkflowValidator.validate_file(str(file_path))
-
-    def register_workflow_path(self, workflow_id: str, path: Path):
-        """Manually registers or overrides a workflow path at runtime."""
-        self._registry[workflow_id] = path
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                def list_workflows(self) -> List[str]:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        """Returns a list of all registered workflow IDs."""
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                self._scan_and_load_workflows()
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        return list(self._registry.keys())
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
