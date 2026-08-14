@@ -1,0 +1,76 @@
+{
+    "name": "RetStockStatusList.lgdn",
+    "url": "http://ems.lgdisplay.com:9000/emsspareparts/sp101/sp110Nav/RetStockStatusList.lgdn",
+    "payload": {
+        "parameters": {
+            "_ems_userId": "658359",
+            "_ems_organizationId": "28753",
+            "_ems_language": "EN"
+        },
+        "datasets": {
+            "ds_search": [
+                {
+                    "organizationId": "28753",
+                    "commonFlag": "\n\t\t\t\t\n\t\t\t\t\n\t\t\t\tY",
+                    "userLogicFlag": "\n\t\t\t\t\n\t\t\t\tY",
+                    "optimizedApplyDate": "20210316"
+                }
+            ],
+            "ds_ItemInfo": [
+                {
+                    "item": "QDAB00758"
+                }
+            ]
+        }
+    },
+    "response": {
+        "parameters": {
+            "errorCode": "1",
+            "errorMsg": ""
+        },
+        "datasets": {
+            "ds_result": [
+                {
+                    "itemName": "QDAB00758",
+                    "organizationId": "28753",
+                    "inventoryItemId": "351677",
+                    "itemDescription": "Fiber Sensor ** FU-35FZ, KEYENCE CORPORATION, Detection Target:OBJECT, Detection Method:FIBER, Detection Target:OPAQUE, Measuring Range:450mm, Lead Line Length(mm):1M, Acceptable Cuvatue adius:R2, Amp(Separate/Integral):SENSOR HEAD, Input",
+                    "itemStatus": "Active",
+                    "uomCode": "EA",
+                    "maker": "KEYENCE CORPORATION",
+                    "catalogGroupName": "Q4.Fiber Sensor",
+                    "itemSpec": "Detection Target:OBJECT, Detection Method:FIBER, Detection Target:OPAQUE, Measuring Range:450mm, Lead Line Length(mm):1M, Acceptable Cuvatue adius:R",
+                    "model": "FU-35FZ",
+                    "supplierId": "863393",
+                    "supplierName": "LGDVN_서브원베트남법인_VN000121",
+                    "tqUserQty": "0",
+                    "tqSafetyStockQty": "0",
+                    "tqUserFlag": "N",
+                    "disuseFlag": "N",
+                    "publicFlag": "Y",
+                    "periodicFlag": "Y",
+                    "inventoryDepartmentCode": "84126",
+                    "stockDepartment": "GA Assembly Technology Part (Close)",
+                    "itemTypeName": "Total Management",
+                    "onhandQuantity": "19",
+                    "allocatedQuantity": "19",
+                    "availableQuantity": "0",
+                    "plannerCode": "SP_UP_VH",
+                    "unitPriceNew": "26.6",
+                    "unitPriceReb": "0",
+                    "unitPriceUnl": "0",
+                    "fdmUrl": "http://fdm.lgdisplay.com:8008/Windchill/extcore/jsp/lgdfdm/drawing/qcodeDrawing.jsp?oid=VR:wt.part.WTPart:4632670",
+                    "fdmFlag": "Y",
+                    "timelyPurchaseDate": "20260729",
+                    "repairRequestQty": "0",
+                    "waitRepairQty": "0",
+                    "itemToolTipText": "빨간색 : 구매 불가 Parts",
+                    "invToolTipText": "고월령, 장기미사용 등을 고려하여 이관 가능하다고 판단되는 재고",
+                    "redFlag": "N",
+                    "availableTransferQtyAll": "0",
+                    "poOptTarget": "N"
+                }
+            ]
+        }
+    }
+}

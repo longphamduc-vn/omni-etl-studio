@@ -1,27 +1,35 @@
-from typing import List
+from typing import List  # <--- Bổ sung dòng này để định nghĩa kiểu List
+from core.common.logger import log
 from core.common.schemas import TransformRule
 from core.engine.operators.registry import OperatorRegistry
 from core.storage.context import PipelineContext
-from core.common.logger import log
 
-# Import package operators để kích hoạt các decorator @OperatorRegistry.register(...)
-import core.engine.operators  # noqa: F401
+# Import all operator modules to register decorators automatically
+import core.engine.operators.duckdb.aggregate
+import core.engine.operators.duckdb.cleaning
+import core.engine.operators.duckdb.enrichment
+import core.engine.operators.duckdb.join
+import core.engine.operators.duckdb.reshape
+import core.engine.operators.python.custom_script
 
 
 class DataTransformer:
-    """Dispatcher engine that coordinates data transformation pipeline rules."""
+    """Dispatches and executes sequential data transformation operators against PipelineContext."""
 
     @staticmethod
     def transform(table_name: str, rules: List[TransformRule], context: PipelineContext) -> str:
-        """Applies a list of transformation rules sequentially over DuckDB tables."""
         if not rules:
             return table_name
 
         current_table = table_name
 
         for rule in rules:
-            log.debug(f"Executing operator [{rule.operator}] on table [{current_table}]")
-            operator_instance = OperatorRegistry.get(rule.operator)
-            current_table = operator_instance.execute(current_table, rule.params, context)
+            log.info(f"Applying transformation operator [{rule.operator}] on table '{current_table}'")
+            operator_inst = OperatorRegistry.get(rule.operator)
+            current_table = operator_inst.execute(
+                table_name=current_table,
+                params=rule.params,
+                context=context
+            )
 
         return current_table

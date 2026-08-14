@@ -3,6 +3,7 @@ from pathlib import Path
 from loguru import logger
 from config.settings import settings
 
+
 def setup_logger():
     """Configures system-wide logging formatting, log levels, and sink file rotation."""
     logger.remove()  # Clear default handlers
@@ -36,5 +37,6 @@ def setup_logger():
     )
 
     return logger
+
 
 log = setup_logger()

@@ -1,8 +1,8 @@
 import json
 from typing import Any, Dict
 from core.common.exceptions import WorkflowValidationError
-from core.common.schemas import WorkflowConfig
 from core.common.logger import log
+from core.common.schemas import WorkflowConfig
 
 
 class WorkflowValidator:
@@ -22,6 +22,8 @@ class WorkflowValidator:
             log.debug(f"Workflow '{workflow_config.workflow_id}' successfully validated.")
             return workflow_config
 
+        except WorkflowValidationError:
+            raise
         except Exception as e:
             raise WorkflowValidationError(f"Workflow validation failure: {str(e)}")
 

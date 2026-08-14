@@ -1,47 +1,47 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from jsonpath_ng.ext import parse
-from core.common.schemas import VariableRule
+from core.common.schemas import VariableConfig, VariableRule
 from core.common.exceptions import EvaluatorError
 from core.common.logger import log
 
 
 class VariableEvaluator:
-    """Evaluates variables against context data according to simple rules:
-    - No jsonpath: Treats `value` as a static literal constant.
-    - Has jsonpath: Evaluates JsonPath expression against root context; uses `value` as fallback if null/missing.
-    """
+    """Evaluates dynamic variable substitution maps using JSONPath syntax or static fallbacks."""
 
     @staticmethod
-    def evaluate(rule: VariableRule, context: Dict[str, Any]) -> Any:
-        """Evaluates a single VariableRule against context."""
-        try:
-            # Case 1: Static Value Constant
-            if not rule.jsonpath:
-                return rule.value
+    def evaluate(rule: Union[VariableConfig, VariableRule], context_data: Dict[str, Any]) -> Any:
+        """Resolves a single variable rule against context data with default fallback."""
+        if not rule:
+            return None
 
-            # Case 2: Dynamic JsonPath Extraction
-            jsonpath_expr = parse(rule.jsonpath)
-            matches = jsonpath_expr.find(context)
+        # 1. Attempt JSONPath extraction first if defined
+        if rule.jsonpath:
+            try:
+                jsonpath_expr = parse(rule.jsonpath)
+                matches = jsonpath_expr.find(context_data)
+                if matches and matches[0].value is not None:
+                    return matches[0].value
+                else:
+                    log.debug(f"JSONPath '{rule.jsonpath}' found no matches in context. Falling back to default.")
+            except Exception as e:
+                raise EvaluatorError(f"Failed to evaluate JSONPath [{rule.jsonpath}]: {str(e)}")
 
-            if matches:
-                extracted_val = matches[0].value
-                if extracted_val is not None and extracted_val != "":
-                    return extracted_val
-
-            # Fallback to static default value
-            return rule.value
-
-        except Exception as e:
-            raise EvaluatorError(f"Failed to evaluate variable with JsonPath [{rule.jsonpath}]: {str(e)}")
+        # 2. Fall back to static default value
+        return rule.default
 
     @classmethod
-    def evaluate_all(cls, rules: Dict[str, VariableRule], context: Dict[str, Any]) -> Dict[str, Any]:
-        """Evaluates all variable rules declared for a step."""
-        resolved_vars = {}
-        if not rules:
-            return resolved_vars
+    def evaluate_all(
+        cls, 
+        var_map: Dict[str, Union[VariableConfig, VariableRule]], 
+        context_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Evaluates a dictionary of variable rules against context data."""
+        resolved: Dict[str, Any] = {}
 
-        for var_name, rule in rules.items():
-            resolved_vars[var_name] = cls.evaluate(rule, context)
+        if not var_map:
+            return resolved
 
-        return resolved_vars
+        for var_name, rule in var_map.items():
+            resolved[var_name] = cls.evaluate(rule, context_data)
+
+        return resolved

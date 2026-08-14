@@ -1,53 +1,93 @@
-import streamlit as st
 import pandas as pd
-from core.storage.context import PipelineContext
+import streamlit as st
+
 from core.common.schemas import WorkflowConfig
+from core.engine.evaluator import VariableEvaluator
+from core.storage.context import PipelineContext
+from drivers.nexacro.builder import NexacroBuilder
 
 
-def render_data_inspector(context: PipelineContext, workflow_config: WorkflowConfig):
-    """Renders the DuckDB isolated schema Inspector and DataFrame Exporter."""
-    st.markdown("### 💾 DuckDB Storage Inspector")
-    st.caption(f"Isolated Namespace: `{context.schema_name}`")
+def render_step_outputs_and_audit(context: PipelineContext, workflow_config: WorkflowConfig):
+    """Render output tables and dynamic audit payload logs (XML & Structured JSON) separately for EVERY step."""
+    st.markdown("---")
+    st.subheader("📊 EXECUTION RESULTS BY STEP")
 
-    # Select output table from pipeline steps
-    available_tables = [step.output_dataset for step in workflow_config.steps if step.output_dataset]
-    
-    if not available_tables:
-        st.warning("No output datasets registered in this workflow.")
-        return
+    # Fetch global_input context from session state
+    global_input = st.session_state.get("last_global_input", {})
+    global_context = {"global_input": global_input}
 
-    selected_table = st.selectbox("Inspect Table:", available_tables, index=len(available_tables) - 1)
+    for idx, step in enumerate(workflow_config.steps, 1):
+        with st.container(border=True):
+            # Step Header Line with Execution Metadata
+            c_title, c_dl = st.columns([0.75, 0.25])
+            
+            with c_title:
+                st.markdown(
+                    f"#### Step {idx}: `{step.step_id}` "
+                    f"&nbsp;<span style='font-size:12px; color:gray;'>({step.driver.upper()} | {step.method} | {step.mode})</span>",
+                    unsafe_allow_html=True
+                )
+            
+            # Fetch Step Result Dataset from DuckDB
+            try:
+                df_step = context.get_dataframe(step.output_dataset)
+                rows_cnt = len(df_step)
+            except Exception:
+                df_step = pd.DataFrame()
+                rows_cnt = 0
 
-    try:
-        df_result = context.get_dataframe(selected_table)
+            with c_dl:
+                if not df_step.empty:
+                    st.download_button(
+                        label=f"📥 Export CSV ({rows_cnt} rows)",
+                        data=df_step.to_csv(index=False),
+                        file_name=f"{step.step_id}_{step.output_dataset}.csv",
+                        mime="text/csv",
+                        key=f"btn_dl_step_{step.step_id}_{idx}",
+                        use_container_width=True
+                    )
 
-        # Show Metrics
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric(label="Total Rows", value=len(df_result))
-        col_m2.metric(label="Total Columns", value=len(df_result.columns))
-        col_m3.metric(label="Memory Usage", value=f"{df_result.memory_usage(deep=True).sum() / 1024:.2f} KB")
+            # Sub-tabs for Clean UI Presentation
+            tab_data, tab_audit_xml, tab_audit_json = st.tabs([
+                "📋 Data Table Output", 
+                "📜 XML Payload Sent", 
+                "🔗 JSON Payload Representation"
+            ])
 
-        # Render Interactive Table
-        st.dataframe(df_result, use_container_width=True)
+            # Resolve variables dynamically against context
+            try:
+                resolved_vars = VariableEvaluator.evaluate_all(step.variables or {}, global_context)
+            except Exception:
+                resolved_vars = {}
 
-        # Download Buttons
-        col_csv, col_json = st.columns(2)
-        with col_csv:
-            st.download_button(
-                label="📥 Export CSV",
-                data=df_result.to_csv(index=False),
-                file_name=f"{selected_table}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-        with col_json:
-            st.download_button(
-                label="📥 Export JSON",
-                data=df_result.to_json(orient="records", indent=2),
-                file_name=f"{selected_table}.json",
-                mime="application/json",
-                use_container_width=True
-            )
+            # 1. TAB OUTPUT DATA TABLE
+            with tab_data:
+                if not df_step.empty:
+                    st.dataframe(df_step, use_container_width=True)
+                else:
+                    st.info(f"No result records found in table `{step.output_dataset}`.")
 
-    except Exception as e:
-        st.error(f"Failed to inspect DuckDB table [{selected_table}]: {str(e)}")
+            # 2. TAB AUDIT XML PAYLOAD
+            with tab_audit_xml:
+                st.caption("**Nexacro XML Protocol Payload (Sent to Endpoint):**")
+                if step.driver == "nexacro":
+                    try:
+                        actual_xml = NexacroBuilder.build_xml_payload(resolved_vars)
+                        st.code(actual_xml, language="xml")
+                    except Exception as e:
+                        st.error(f"Failed to build XML payload: {str(e)}")
+                else:
+                    st.info(f"Driver `{step.driver}` does not generate XML payloads.")
+
+            # 3. TAB AUDIT STRUCTURED JSON PAYLOAD
+            with tab_audit_json:
+                st.caption("**Nexacro Structured JSON Payload:**")
+                structured_payload = NexacroBuilder.prepare_structured_payload(resolved_vars)
+                
+                st.json({
+                    "step_id": step.step_id,
+                    "driver": step.driver,
+                    "method": step.method,
+                    "endpoint": step.endpoint or "N/A (Pure Transformation)",
+                    "payload": structured_payload
+                })

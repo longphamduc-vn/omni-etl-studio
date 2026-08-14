@@ -4,7 +4,7 @@ from drivers.nexacro.parser import NexacroParser
 
 
 def render_converter_widget():
-    """Renders the utility tab for converting Nexacro XML payloads."""
+    """Renders the utility tab for converting and inspecting Nexacro XML payloads."""
     st.subheader("🔄 Nexacro XML Payload Converter & Inspector")
     
     sample_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -28,7 +28,7 @@ def render_converter_widget():
             cleaned_xml = NexacroCleaner.clean_xml(xml_input)
             df = NexacroParser.parse_xml_to_dataframe(cleaned_xml)
 
-            st.success(f"Parsed {len(df)} records successfully!")
+            st.success(f"Successfully parsed {len(df)} records!")
             
             tab_df, tab_json = st.tabs(["📊 DataFrame View", "📜 JSON View"])
             with tab_df:

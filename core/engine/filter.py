@@ -1,12 +1,13 @@
-import pandas as pd
 from typing import List
-from core.common.schemas import FilterCondition
+import pandas as pd
+
 from core.common.exceptions import FilterError
 from core.common.logger import log
+from core.common.schemas import FilterCondition
 
 
 class FilterEngine:
-    """Engine for pre-call record filtering supporting multiple evaluation operators."""
+    """Engine for pre-call or post-fetch record filtering supporting multiple evaluation operators."""
 
     @staticmethod
     def apply_filters(df: pd.DataFrame, conditions: List[FilterCondition]) -> pd.DataFrame:
@@ -28,7 +29,7 @@ class FilterEngine:
 
                 col_series = filtered_df[field]
 
-                # Tự động ép kiểu số nếu so sánh số học nhưng cột đang ở dạng String
+                # Automatic numeric casting for arithmetic comparison operators
                 if op in [">", "<", ">=", "<="]:
                     try:
                         col_series = pd.to_numeric(col_series)
@@ -37,7 +38,6 @@ class FilterEngine:
                         pass
 
                 if op in ["==", "="]:
-                    # Ép chuỗi nếu so sánh bằng giữa các kiểu lệch nhau
                     filtered_df = filtered_df[col_series.astype(str) == str(val)]
                 elif op in ["!=", "<>"]:
                     filtered_df = filtered_df[col_series.astype(str) != str(val)]

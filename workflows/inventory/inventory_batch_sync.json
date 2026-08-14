@@ -1,31 +1,135 @@
 {
-  "workflow_id": "inventory_batch_sync",
-  "description": "Batch sync of warehouse items with DuckDB SQL group-by aggregations.",
+  "workflow_id": "nexacro_full_pipeline_with_transform",
+  "description": "Pipeline 4 bước: Search ➔ Fetch Details ➔ Transform/Accumulate/Dedup ➔ Final Analytics Report",
+  "inputs": [
+    {
+      "name": "category",
+      "label": "Danh mục sản phẩm",
+      "type": "string",
+      "default": "Electronics"
+    },
+    {
+      "name": "search_table",
+      "label": "Danh sách Mã Sản Phẩm Tra Cứu (Dataset Input)",
+      "type": "table",
+      "columns": [
+        {
+          "name": "product_id",
+          "label": "Mã Sản Phẩm",
+          "type": "string",
+          "default": "SP-001"
+        }
+      ],
+      "default": [
+        {
+          "product_id": "SP-001"
+        },
+        {
+          "product_id": "SP-003"
+        }
+      ]
+    }
+  ],
   "steps": [
     {
-      "step_id": "sync_warehouse_items",
+      "step_id": "step1_search_products",
       "driver": "nexacro",
       "mode": "batch",
-      "endpoint": "http://127.0.0.1:8088/nexacro/inventory",
+      "method": "POST",
+      "endpoint": "http://127.0.0.1:8000/api/nexacro/xml/products/search-list",
       "variables": {
-        "warehouse_id": {
-          "jsonpath": "$.global_input.warehouse_id",
-          "value": "WH-01"
+        "category": {
+          "jsonpath": "$.global_input.category"
+        },
+        "ds_id_list": {
+          "jsonpath": "$.global_input.search_table"
         }
       },
-      "filters": [],
+      "transformations": [
+        {
+          "operator": "handle_nulls",
+          "params": {
+            "strategy": "drop",
+            "subset": [
+              "product_id"
+            ]
+          }
+        }
+      ],
+      "output_dataset": "ds_step1_raw_search"
+    },
+    {
+      "step_id": "step2_fetch_details_chained",
+      "driver": "nexacro",
+      "mode": "chained_loop",
+      "method": "POST",
+      "endpoint": "http://127.0.0.1:8000/api/nexacro/xml/products/detail",
+      "loop_source": "ds_step1_raw_search",
+      "loop_param_mapping": {
+        "product_id": "product_id"
+      },
+      "variables": {
+        "ds_condition": {
+          "jsonpath": "$.loop_row"
+        }
+      },
+      "transformations": [],
+      "output_dataset": "ds_step2_product_details"
+    },
+    {
+      "step_id": "step3_data_enrichment_accumulate",
+      "driver": "passthrough",
+      "mode": "batch",
+      "method": "POST",
+      "endpoint": "",
+      "variables": {},
+      "transformations": [
+        {
+          "operator": "add_date_column",
+          "params": {
+            "target_column": "created_date",
+            "date_source": "current_date"
+          }
+        },
+        {
+          "operator": "accumulate_data",
+          "params": {
+            "target_history_table": "ds_historical_products",
+            "strategy": "union_by_name"
+          }
+        },
+        {
+          "operator": "deduplicate",
+          "params": {
+            "subset": [
+              "product_id"
+            ]
+          }
+        }
+      ],
+      "output_dataset": "ds_step3_accumulated_clean"
+    },
+    {
+      "step_id": "step4_analytics_final_report",
+      "driver": "passthrough",
+      "mode": "batch",
+      "method": "POST",
+      "endpoint": "",
+      "variables": {},
       "transformations": [
         {
           "operator": "group_by",
           "params": {
-            "by": ["category"],
+            "by": [
+              "category"
+            ],
             "agg": {
-              "quantity": "SUM"
+              "product_id": "COUNT"
             }
           }
         }
       ],
-      "output_dataset": "category_inventory_summary"
+      "output_dataset": "ds_step4_final_report"
     }
   ]
 }

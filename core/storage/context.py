@@ -16,7 +16,8 @@ class PipelineContext:
         self.schema_name = f"ns_{clean_id}"
         
         try:
-            self.conn = db_connection or duckdb.connect(database=":memory:")
+            # self.conn = db_connection or duckdb.connect(database=":memory:")
+            self.conn = duckdb.connect(database="omni_etl_studio.duckdb")
             self._init_schema()
         except Exception as e:
             raise StorageError(f"Failed to initialize DuckDB storage context: {str(e)}")
@@ -31,11 +32,13 @@ class PipelineContext:
         full_table = f"{self.schema_name}.{table_name}"
         try:
             self.conn.register("temp_df", df)
-            if if_exists == "replace":
-                self.conn.execute(f"CREATE OR REPLACE TABLE {full_table} AS SELECT * FROM temp_df;")
-            elif if_exists == "append":
-                self.conn.execute(f"INSERT INTO {full_table} SELECT * FROM temp_df;")
-            self.conn.unregister("temp_df")
+            try:
+                if if_exists == "replace":
+                    self.conn.execute(f"CREATE OR REPLACE TABLE {full_table} AS SELECT * FROM temp_df;")
+                elif if_exists == "append":
+                    self.conn.execute(f"INSERT INTO {full_table} SELECT * FROM temp_df;")
+            finally:
+                self.conn.unregister("temp_df")
             log.debug(f"Saved {len(df)} records into table {full_table}")
         except Exception as e:
             raise StorageError(f"Failed to save DataFrame into table {full_table}: {str(e)}")

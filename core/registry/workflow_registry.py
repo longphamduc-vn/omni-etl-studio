@@ -13,17 +13,18 @@ class WorkflowRegistry:
     def __init__(self, workflows_dir: Optional[Path] = None):
         self.workflows_dir = workflows_dir or settings.WORKFLOWS_DIR
         self._registry: Dict[str, WorkflowConfig] = {}
+        self._category_map: Dict[str, List[str]] = {}
         self._scan_and_load_workflows()
 
     def _scan_and_load_workflows(self) -> None:
         """Recursively scans the workflows directory for any *.json files and validates them."""
         self._registry.clear()
+        self._category_map.clear()
         
         if not self.workflows_dir.exists():
             log.warning(f"Workflows directory does not exist: {self.workflows_dir}")
             return
 
-        # Quét tất cả file .json ngoại trừ catalog.json (nếu còn sót lại)
         json_files = list(self.workflows_dir.glob("**/*.json"))
         
         for file_path in json_files:
@@ -32,13 +33,20 @@ class WorkflowRegistry:
                 
             try:
                 wf_config = WorkflowValidator.validate_file(str(file_path))
-                if wf_config.workflow_id in self._registry:
-                    log.warning(
-                        f"Duplicate workflow_id '{wf_config.workflow_id}' found in {file_path}. "
-                        f"Overwriting previous definition."
-                    )
+                
+                # Categorize based on relative folder path
+                relative_path = file_path.relative_to(self.workflows_dir)
+                category = relative_path.parent.as_posix()
+                if category == ".":
+                    category = "General / Root"
+
+                if category not in self._category_map:
+                    self._category_map[category] = []
+                self._category_map[category].append(wf_config.workflow_id)
+
                 self._registry[wf_config.workflow_id] = wf_config
                 log.debug(f"Loaded workflow [{wf_config.workflow_id}] from {file_path}")
+
             except WorkflowValidationError as e:
                 log.error(f"Skipping invalid workflow file {file_path}: {str(e)}")
 
@@ -47,7 +55,6 @@ class WorkflowRegistry:
     def get_workflow(self, workflow_id: str) -> WorkflowConfig:
         """Retrieves a validated WorkflowConfig by workflow_id."""
         if workflow_id not in self._registry:
-            # Thử scan lại một lần nữa phòng trường hợp file mới được thêm vào lúc runtime
             self._scan_and_load_workflows()
             
         if workflow_id not in self._registry:
@@ -56,6 +63,11 @@ class WorkflowRegistry:
         return self._registry[workflow_id]
 
     def list_workflows(self) -> List[str]:
-        """Returns a list of all registered workflow IDs."""
+        """Returns a flat list of all registered workflow IDs."""
         self._scan_and_load_workflows()
         return list(self._registry.keys())
+
+    def list_workflows_grouped(self) -> Dict[str, List[str]]:
+        """Returns registered workflows grouped by their relative folder paths."""
+        self._scan_and_load_workflows()
+        return self._category_map
