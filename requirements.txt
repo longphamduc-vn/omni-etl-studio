@@ -1,0 +1,12 @@
+fastapi==0.141.1
+jsonpath_ng==1.8.0
+loguru==0.7.3
+numpy==2.5.2
+pandas==3.0.5
+pydantic==2.13.4
+pydantic_settings==2.15.0
+pytest==9.1.1
+Requests==2.34.2
+streamlit==1.61.1
+uvicorn==0.52.3
+xmltodict==1.0.4

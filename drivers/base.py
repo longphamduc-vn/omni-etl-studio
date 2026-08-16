@@ -8,7 +8,7 @@ class BaseDriver(ABC):
     """Abstract Base Class for all protocol drivers (e.g., Nexacro, REST, SQL)."""
 
     @abstractmethod
-    def execute(self, endpoint: str, variables: Dict[str, Any]) -> pd.DataFrame:
+    def execute(self, endpoint: str, variables: Dict[str, Any], method: str = "POST") -> pd.DataFrame:
         """Executes a protocol request and returns the resulting dataset as a Pandas DataFrame."""
         pass
 
@@ -33,25 +33,6 @@ class DriverRegistry:
         if driver_name not in cls._registry:
             raise DriverError(f"Driver protocol '{name}' is not registered. Available: {list(cls._registry.keys())}")
         return cls._registry[driver_name]
-
-
-@DriverRegistry.register("passthrough")
-@DriverRegistry.register("none")
-class PassthroughDriver(BaseDriver):
-    """Fallback driver for pure transformation steps requiring no network/API calls."""
-
-    def execute(self, endpoint: str, variables: Dict[str, Any]) -> pd.DataFrame:
-        return pd.DataFrame()
-
-
-
-class BaseDriver(ABC):
-    """Abstract Base Class for all protocol drivers (e.g., Nexacro, REST, SQL)."""
-
-    @abstractmethod
-    def execute(self, endpoint: str, variables: Dict[str, Any], method: str = "POST") -> pd.DataFrame:
-        """Executes a protocol request and returns the resulting dataset as a Pandas DataFrame."""
-        pass
 
 
 @DriverRegistry.register("passthrough")

@@ -2,12 +2,14 @@ import streamlit as st
 
 from core.engine.runner import PipelineRunner
 from core.registry.workflow_registry import WorkflowRegistry
-from ui.components.converter_widget import render_converter_widget
-from ui.components.data_inspector import render_step_outputs_and_audit
-from ui.components.duckdb_explorer import render_duckdb_explorer_widget
-from ui.components.input_form import render_dynamic_inputs
-from ui.components.workflow_editor import render_workflow_editor_widget
-from ui.components.workflow_viewer import render_workflow_flow
+from ui.components import (
+    render_converter_widget,
+    render_dynamic_inputs,
+    render_duckdb_explorer_widget,
+    render_step_outputs_and_audit,
+    render_workflow_editor_widget,
+    render_workflow_flow,
+)
 
 # Streamlit Page Setup
 st.set_page_config(page_title="OmniETL Studio", page_icon="🚀", layout="wide")

@@ -1,0 +1,60 @@
+### Case 1: Tìm kiếm sản phẩm "Thời trang" và còn hàng "IN_STOCK"
+POST http://127.0.0.1:8000/api/nexacro/xml/products/search-list
+Content-Type: application/xml
+Accept: application/xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<Root xmlns="http://tobesoft.com">
+    <!-- Dataset 1: Điều kiện lọc theo dữ liệu thật -->
+    <Dataset id="ds_search">
+        <ColumnInfo>
+            <Column id="category" type="STRING" size="256"/>
+            <Column id="status" type="STRING" size="256"/>
+        </ColumnInfo>
+        <Rows>
+            <Row>
+                <Col id="category">Thời trang</Col>
+                <Col id="status">IN_STOCK</Col>
+            </Row>
+        </Rows>
+    </Dataset>
+
+    <!-- Dataset 2: Danh sách product_id cần tìm đích danh -->
+    <Dataset id="ds_id_list">
+        <ColumnInfo>
+            <Column id="product_id" type="STRING" size="256"/>
+        </ColumnInfo>
+        <Rows>
+            <Row>
+                <Col id="product_id">SP-001</Col>
+            </Row>
+        </Rows>
+        <Rows>
+            <Row>
+                <Col id="product_id">SP-002</Col>
+            </Row>
+        </Rows>
+    </Dataset>
+</Root>
+
+###
+
+### Case 2: Tra cứu chi tiết sản phẩm (Trả về 3 Datasets: master, inventory, pricing)
+POST http://127.0.0.1:8000/api/nexacro/xml/products/detail
+Content-Type: application/xml
+Accept: application/xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<Root xmlns="http://tobesoft.com">
+    <!-- Dataset điều kiện bắt buộc đúng ID là ds_condition -->
+    <Dataset id="ds_condition">
+        <ColumnInfo>
+            <Column id="product_id" type="STRING" size="256"/>
+        </ColumnInfo>
+        <Rows>
+            <Row>
+                <Col id="product_id">SP-001</Col>
+            </Row>
+        </Rows>
+    </Dataset>
+</Root>

@@ -3,11 +3,15 @@ from pydantic import BaseModel, Field
 
 
 class ColumnConfig(BaseModel):
-    """Schema definition for table input columns."""
-    name: str = Field(..., description="Unique column field identifier")
+    """Schema definition for table input columns and output projection."""
+    name: Optional[str] = Field(None, description="Unique column field identifier")
+    field: Optional[str] = Field(None, description="Source field path")
+    alias: Optional[str] = Field(None, description="Target column alias")
     label: Optional[str] = Field(None, description="Human-readable label for UI rendering")
+    title: Optional[str] = Field(None, description="Display title for UI table headers")
     type: str = Field(default="string", description="Data type: string, number, boolean")
     default: Optional[Any] = Field(None, description="Default initial value")
+    visible: bool = Field(default=True, description="Column visibility status in UI output")
 
 
 class WorkflowInput(BaseModel):
@@ -22,13 +26,12 @@ class WorkflowInput(BaseModel):
 
 
 class VariableConfig(BaseModel):
-    """Configuration for mapping execution context variables via JSONPath or static fallback."""
-    jsonpath: Optional[str] = Field(None, description="JSONPath query expression to extract value from context")
-    default: Optional[Any] = Field(None, description="Fallback static default value if JSONPath evaluation is null")
-
-
-# Backward compatibility alias for legacy modules
-VariableRule = VariableConfig
+    """Configuration for mapping execution context variables with support for datasets and aliasing."""
+    source: Optional[str] = Field(None, description="Dot-notation or JSONPath source path")
+    jsonpath: Optional[str] = Field(None, description="Legacy JSONPath query expression")
+    type: Optional[str] = Field(default="parameter", description="Variable type: parameter or dataset")
+    default: Optional[Any] = Field(None, description="Fallback static default value if evaluation is null")
+    columns: Optional[List[ColumnConfig]] = Field(default=None, description="Column mappings for datasets")
 
 
 class FilterCondition(BaseModel):
@@ -44,6 +47,12 @@ class TransformRule(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict, description="Operator execution parameters")
 
 
+class OutputConfig(BaseModel):
+    """Schema definition for custom UI table output rendering."""
+    display_title: Optional[str] = Field(None, description="Human-readable table title for Streamlit UI")
+    columns: List[ColumnConfig] = Field(default_factory=list, description="Column visibility and label mapping")
+
+
 class StepConfig(BaseModel):
     """Schema definition for an individual pipeline step execution stage."""
     step_id: str = Field(..., description="Unique step identifier")
@@ -51,12 +60,12 @@ class StepConfig(BaseModel):
     mode: str = Field(default="batch", description="Execution mode: batch or chained_loop")
     method: str = Field(default="POST", description="HTTP/RPC protocol method (e.g., GET, POST, PUT, DELETE)")
     endpoint: str = Field(default="", description="Target HTTP or RPC API endpoint URL")
-    variables: Dict[str, VariableConfig] = Field(default_factory=dict, description="Variable resolution rules")
+    variables: Dict[str, Any] = Field(default_factory=dict, description="Variable resolution rules")
     filters: List[FilterCondition] = Field(default_factory=list, description="List of dataset row filters")
     transformations: List[TransformRule] = Field(default_factory=list, description="Ordered list of DuckDB transformation rules")
     output_dataset: str = Field(..., description="Target DuckDB table name to store step results")
+    output_config: Optional[OutputConfig] = Field(None, description="Custom UI rendering configuration")
     loop_source: Optional[str] = Field(None, description="Source table name for chained_loop execution mode")
-    loop_param_mapping: Optional[Dict[str, str]] = Field(None, description="Field mapping rules for looping step context")
 
 
 class WorkflowConfig(BaseModel):

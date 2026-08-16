@@ -1,6 +1,5 @@
 import streamlit as st
-from drivers.nexacro.cleaner import NexacroCleaner
-from drivers.nexacro.parser import NexacroParser
+from drivers.nexacro import NexacroDriver
 
 
 def render_converter_widget():
@@ -8,7 +7,7 @@ def render_converter_widget():
     st.subheader("🔄 Nexacro XML Payload Converter & Inspector")
     
     sample_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Root xmlns:ns="http://www.nexacro.com">
+<Root xmlns="http://tobesoft.com">
     <Dataset id="ds_sample">
         <ColumnInfo>
             <Column id="code" type="STRING"/>
@@ -25,9 +24,7 @@ def render_converter_widget():
 
     if st.button("Parse XML Payload", type="secondary"):
         try:
-            cleaned_xml = NexacroCleaner.clean_xml(xml_input)
-            df = NexacroParser.parse_xml_to_dataframe(cleaned_xml)
-
+            df = NexacroDriver.parse_xml_response(xml_input)
             st.success(f"Successfully parsed {len(df)} records!")
             
             tab_df, tab_json = st.tabs(["📊 DataFrame View", "📜 JSON View"])

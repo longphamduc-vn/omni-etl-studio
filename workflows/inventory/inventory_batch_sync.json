@@ -1,16 +1,22 @@
 {
   "workflow_id": "nexacro_full_pipeline_with_transform",
-  "description": "Pipeline 4 bước: Search ➔ Fetch Details ➔ Transform/Accumulate/Dedup ➔ Final Analytics Report",
+  "description": "Pipeline 4 bước chuẩn Nexacro Protocol: Search ➔ Fetch Details ➔ Enrichment & Accumulate ➔ Final Report",
   "inputs": [
     {
       "name": "category",
       "label": "Danh mục sản phẩm",
       "type": "string",
-      "default": "Electronics"
+      "default": "Thời trang"
+    },
+    {
+      "name": "status",
+      "label": "Trạng thái kho",
+      "type": "string",
+      "default": "IN_STOCK"
     },
     {
       "name": "search_table",
-      "label": "Danh sách Mã Sản Phẩm Tra Cứu (Dataset Input)",
+      "label": "Bảng Tra Cứu Mã Sản Phẩm",
       "type": "table",
       "columns": [
         {
@@ -25,7 +31,7 @@
           "product_id": "SP-001"
         },
         {
-          "product_id": "SP-003"
+          "product_id": "SP-002"
         }
       ]
     }
@@ -38,11 +44,27 @@
       "method": "POST",
       "endpoint": "http://127.0.0.1:8000/api/nexacro/xml/products/search-list",
       "variables": {
-        "category": {
-          "jsonpath": "$.global_input.category"
+        "ds_search": {
+          "type": "dataset",
+          "columns": [
+            {
+              "field": "global_input.category",
+              "alias": "category"
+            },
+            {
+              "field": "global_input.status",
+              "alias": "status"
+            }
+          ]
         },
         "ds_id_list": {
-          "jsonpath": "$.global_input.search_table"
+          "type": "dataset",
+          "columns": [
+            {
+              "field": "global_input.search_table.product_id",
+              "alias": "product_id"
+            }
+          ]
         }
       },
       "transformations": [
@@ -56,7 +78,42 @@
           }
         }
       ],
-      "output_dataset": "ds_step1_raw_search"
+      "output_dataset": "ds_step1_raw_search",
+      "output_config": {
+        "display_title": "Bảng Danh Sách Sản Phẩm Tìm Kiếm (Case 1)",
+        "columns": [
+          {
+            "field": "product_id",
+            "title": "Mã Sản Phẩm",
+            "visible": true
+          },
+          {
+            "field": "product_name",
+            "title": "Tên Sản Phẩm",
+            "visible": true
+          },
+          {
+            "field": "sku",
+            "title": "Mã SKU",
+            "visible": true
+          },
+          {
+            "field": "category",
+            "title": "Danh Mục",
+            "visible": true
+          },
+          {
+            "field": "stock_quantity",
+            "title": "Số Lượng Tồn Kho",
+            "visible": true
+          },
+          {
+            "field": "sale_price",
+            "title": "Giá Bán",
+            "visible": true
+          }
+        ]
+      }
     },
     {
       "step_id": "step2_fetch_details_chained",
@@ -65,16 +122,69 @@
       "method": "POST",
       "endpoint": "http://127.0.0.1:8000/api/nexacro/xml/products/detail",
       "loop_source": "ds_step1_raw_search",
-      "loop_param_mapping": {
-        "product_id": "product_id"
-      },
       "variables": {
         "ds_condition": {
-          "jsonpath": "$.loop_row"
+          "type": "dataset",
+          "columns": [
+            {
+              "field": "loop_row.product_id",
+              "alias": "product_id"
+            }
+          ]
         }
       },
       "transformations": [],
-      "output_dataset": "ds_step2_product_details"
+      "output_dataset": "ds_step2_product_details",
+      "output_config": {
+        "display_title": "Chi Tiết Sản Phẩm Bóc Tách Đa Dataset",
+        "columns": [
+          {
+            "field": "product_id",
+            "title": "Mã Sản Phẩm",
+            "visible": true
+          },
+          {
+            "field": "product_name",
+            "title": "Tên Sản Phẩm",
+            "visible": true
+          },
+          {
+            "field": "category",
+            "title": "Danh Mục",
+            "visible": true
+          },
+          {
+            "field": "brand",
+            "title": "Thương Hiệu",
+            "visible": true
+          },
+          {
+            "field": "stock_quantity",
+            "title": "Tồn Thực Tế",
+            "visible": true
+          },
+          {
+            "field": "available_quantity",
+            "title": "Khả Dụng",
+            "visible": true
+          },
+          {
+            "field": "cost_price",
+            "title": "Giá Gốc",
+            "visible": true
+          },
+          {
+            "field": "sale_price",
+            "title": "Giá Khuyến Mãi",
+            "visible": true
+          },
+          {
+            "field": "price_status",
+            "title": "Trạng Thái Giá",
+            "visible": true
+          }
+        ]
+      }
     },
     {
       "step_id": "step3_data_enrichment_accumulate",
@@ -82,32 +192,62 @@
       "mode": "batch",
       "method": "POST",
       "endpoint": "",
-      "variables": {},
       "transformations": [
         {
           "operator": "add_date_column",
           "params": {
             "target_column": "created_date",
-            "date_source": "current_date"
+            "date_source": "current_timestamp"
           }
         },
         {
           "operator": "accumulate_data",
           "params": {
-            "target_history_table": "ds_historical_products",
-            "strategy": "union_by_name"
+            "target_history_table": "ds_historical_products_v2",
+            "dedup_keys": [
+              "product_id"
+            ],
+            "order_by": "created_date DESC"
           }
         },
         {
-          "operator": "deduplicate",
+          "operator": "sql_transform",
           "params": {
-            "subset": [
-              "product_id"
-            ]
+            "where_clause": "CAST(product_id AS VARCHAR) = '$.global_input.search_table.product_id'"
           }
         }
       ],
-      "output_dataset": "ds_step3_accumulated_clean"
+      "output_dataset": "ds_step3_accumulated_clean",
+      "output_config": {
+        "display_title": "Dữ Liệu Tích Lũy / Cập Nhật Mới Nhất",
+        "columns": [
+          {
+            "field": "product_id",
+            "title": "Mã Sản Phẩm",
+            "visible": true
+          },
+          {
+            "field": "product_name",
+            "title": "Tên Sản Phẩm",
+            "visible": true
+          },
+          {
+            "field": "category",
+            "title": "Danh Mục",
+            "visible": true
+          },
+          {
+            "field": "sale_price",
+            "title": "Giá Bán",
+            "visible": true
+          },
+          {
+            "field": "created_date",
+            "title": "Ngày Cập Nhật Mới Nhất",
+            "visible": true
+          }
+        ]
+      }
     },
     {
       "step_id": "step4_analytics_final_report",
@@ -129,7 +269,22 @@
           }
         }
       ],
-      "output_dataset": "ds_step4_final_report"
+      "output_dataset": "ds_step4_final_report",
+      "output_config": {
+        "display_title": "Báo Cáo Tổng Hợp Sản Phẩm Theo Danh Mục",
+        "columns": [
+          {
+            "field": "category",
+            "title": "Danh Mục",
+            "visible": true
+          },
+          {
+            "field": "product_id_COUNT",
+            "title": "Tổng Số Lượng",
+            "visible": true
+          }
+        ]
+      }
     }
   ]
-}
+}   

@@ -7,28 +7,30 @@ from core.common.logger import log
 
 
 class PipelineContext:
-    """Manages an isolated DuckDB schema namespace for each execution pipeline."""
+    """Manages DuckDB storage with a global persistent schema for cross-session data accumulation."""
 
-    def __init__(self, pipeline_id: str, db_connection: Optional[duckdb.DuckDBPyConnection] = None):
-        # Sanitize schema identifier to ensure safe SQL syntax execution
-        clean_id = re.sub(r'[^a-zA-Z0-9_]', '_', pipeline_id)
-        self.pipeline_id = pipeline_id
+    DB_FILE = "omni_etl_studio.duckdb"
+    SHARED_SCHEMA = "shared_storage"
+
+    def __init__(self, pipeline_id: Optional[str] = None):
+        self.pipeline_id = pipeline_id or "default_session"
+        clean_id = re.sub(r'[^a-zA-Z0-9_]', '_', self.pipeline_id)
         self.schema_name = f"ns_{clean_id}"
+        self.shared_schema = self.SHARED_SCHEMA
         
         try:
-            # self.conn = db_connection or duckdb.connect(database=":memory:")
-            self.conn = duckdb.connect(database="omni_etl_studio.duckdb")
+            # Mở kết nối vĩnh viễn tới file DuckDB vật lý trên đĩa
+            self.conn = duckdb.connect(database=self.DB_FILE)
             self._init_schema()
         except Exception as e:
             raise StorageError(f"Failed to initialize DuckDB storage context: {str(e)}")
 
     def _init_schema(self):
-        """Creates the isolated DuckDB schema namespace for the pipeline execution."""
-        log.info(f"Initializing isolated DuckDB schema: {self.schema_name}")
+        """Initializes runtime execution schema and the persistent shared storage schema."""
         self.conn.execute(f"CREATE SCHEMA IF NOT EXISTS {self.schema_name};")
+        self.conn.execute(f"CREATE SCHEMA IF NOT EXISTS {self.shared_schema};")
 
     def save_dataframe(self, table_name: str, df: pd.DataFrame, if_exists: str = "replace"):
-        """Saves a Pandas DataFrame into the isolated DuckDB schema."""
         full_table = f"{self.schema_name}.{table_name}"
         try:
             self.conn.register("temp_df", df)
@@ -39,29 +41,55 @@ class PipelineContext:
                     self.conn.execute(f"INSERT INTO {full_table} SELECT * FROM temp_df;")
             finally:
                 self.conn.unregister("temp_df")
-            log.debug(f"Saved {len(df)} records into table {full_table}")
         except Exception as e:
             raise StorageError(f"Failed to save DataFrame into table {full_table}: {str(e)}")
 
     def get_dataframe(self, table_name: str) -> pd.DataFrame:
-        """Fetches a table from DuckDB storage and converts it to a Pandas DataFrame."""
+        """Searches active execution schema first, then falls back to persistent shared_storage."""
         full_table = f"{self.schema_name}.{table_name}"
+        shared_table = f"{self.shared_schema}.{table_name}"
         try:
-            return self.conn.execute(f"SELECT * FROM {full_table};").df()
+            check_exec = self.conn.execute(f"""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = '{self.schema_name}' AND table_name = '{table_name}';
+            """).df()
+            if not check_exec.empty:
+                return self.conn.execute(f"SELECT * FROM {full_table};").df()
+
+            check_shared = self.conn.execute(f"""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = '{self.shared_schema}' AND table_name = '{table_name}';
+            """).df()
+            if not check_shared.empty:
+                return self.conn.execute(f"SELECT * FROM {shared_table};").df()
+
+            return pd.DataFrame()
         except Exception as e:
-            raise StorageError(f"Failed to fetch table {full_table}: {str(e)}")
+            raise StorageError(f"Failed to fetch table {table_name}: {str(e)}")
 
     def execute_sql(self, query: str) -> pd.DataFrame:
-        """Executes a raw SQL statement against DuckDB storage."""
         try:
             return self.conn.execute(query).df()
         except Exception as e:
             raise StorageError(f"SQL execution error [{query}]: {str(e)}")
 
-    def close(self):
-        """Cleans up pipeline DuckDB schema and resources."""
+    def clean_temporary_schemas(self):
+        """Safely cleans old temporary run schemas while preserving shared_storage."""
         try:
-            self.conn.execute(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE;")
-            log.info(f"Cleaned up DuckDB isolated schema: {self.schema_name}")
+            schemas_df = self.conn.execute("""
+                SELECT schema_name FROM information_schema.schemata 
+                WHERE schema_name LIKE 'ns_run_%';
+            """).df()
+            if not schemas_df.empty:
+                for s_name in schemas_df["schema_name"].tolist():
+                    self.conn.execute(f"DROP SCHEMA IF EXISTS {s_name} CASCADE;")
+                log.info("Cleaned up temporary execution schemas.")
         except Exception as e:
-            log.warning(f"Failed to drop DuckDB schema {self.schema_name}: {str(e)}")
+            log.warning(f"Error cleaning temporary schemas: {str(e)}")
+
+    def close(self):
+        """Closes connection without deleting persistent historical data."""
+        try:
+            self.conn.close()
+        except Exception:
+            pass

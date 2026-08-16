@@ -5,8 +5,8 @@ import pandas as pd
 from core.common.exceptions import OmniETLException
 from core.common.logger import log
 from core.common.schemas import StepConfig, WorkflowConfig
-from core.engine.evaluator import VariableEvaluator
 from core.engine.filter import FilterEngine
+from core.engine.resolver import VariableResolver
 from core.engine.transformer import DataTransformer
 from core.storage.context import PipelineContext
 from drivers.base import DriverRegistry
@@ -22,6 +22,10 @@ class PipelineRunner:
 
     def run(self, global_input: Optional[Dict[str, Any]] = None, session: Optional[Dict[str, Any]] = None) -> PipelineContext:
         """Executes the pipeline workflow across all configured steps."""
+        
+        # Binds global inputs directly into context storage for downstream Operators
+        self.context.inputs = global_input or {}
+        
         global_context = {
             "global_input": global_input or {},
             "session": session or {}
@@ -37,6 +41,46 @@ class PipelineRunner:
             self.context.close()
             raise OmniETLException(f"Pipeline execution failure: {str(e)}")
 
+    def _apply_output_config_projection(self, step: StepConfig) -> None:
+        """Projects, filters, and reorders DuckDB table columns according to step.output_config strictly."""
+        # 1. Ép kiểu output_config về dict an toàn kể cả khi là Pydantic Model
+        output_config = step.output_config
+        if hasattr(output_config, "model_dump"):
+            output_config = output_config.model_dump()
+        elif not isinstance(output_config, dict):
+            output_config = {}
+
+        columns_config = output_config.get("columns", [])
+
+        if not columns_config:
+            log.info(f"[SQL PROJECT SKIPPED] No columns_config defined for step [{step.step_id}]")
+            return
+
+        full_table = f"{self.context.schema_name}.{step.output_dataset}"
+        
+        # 2. Lấy danh sách cột hiện có trong bảng DuckDB
+        try:
+            check_df = self.context.execute_sql(f"SELECT * FROM {full_table} LIMIT 0;")
+            existing_cols = check_df.columns.tolist()
+        except Exception as e:
+            log.warning(f"[SQL PROJECT SKIPPED] Table '{full_table}' does not exist: {str(e)}")
+            return
+
+        # 3. Lọc & Sắp xếp các cột hiển thị theo đúng thứ tự khai báo trong JSON
+        select_exprs = []
+        for c in columns_config:
+            field = c.get("field")
+            is_visible = c.get("visible", True)
+            
+            # Chỉ lấy các cột visible và có tồn tại trong bảng DuckDB
+            if is_visible and field in existing_cols:
+                select_exprs.append(f'"{field}"')
+
+        if select_exprs:
+            sql = f"CREATE OR REPLACE TABLE {full_table} AS SELECT {', '.join(select_exprs)} FROM {full_table};"
+            log.info(f"[SQL PROJECT COLUMNS EXECUTE] {sql}")
+            self.context.execute_sql(sql)
+
     def execute_step(self, step: StepConfig, global_context: Dict[str, Any]) -> None:
         """Executes a single pipeline step based on driver type and execution mode."""
         log.info(f"Executing step [{step.step_id}] in mode '{step.mode}' via driver '{step.driver}'")
@@ -45,19 +89,22 @@ class PipelineRunner:
         if step.driver in ["passthrough", "none", ""] or not step.endpoint:
             log.info(f"Step [{step.step_id}] is a Pure Transform Step. Skipping API invocation.")
             
-            # Determine source input table
             prev_table = step.loop_source or (
                 self.workflow.steps[self.workflow.steps.index(step) - 1].output_dataset 
                 if self.workflow.steps.index(step) > 0 else ""
             )
             
-            if prev_table and step.transformations:
-                final_table = DataTransformer.transform(prev_table, step.transformations, self.context)
-                if final_table != step.output_dataset:
-                    self.context.execute_sql(
-                        f"CREATE OR REPLACE TABLE {self.context.schema_name}.{step.output_dataset} AS "
-                        f"SELECT * FROM {self.context.schema_name}.{final_table};"
-                    )
+            if prev_table:
+                self.context.execute_sql(
+                    f"CREATE OR REPLACE TABLE {self.context.schema_name}.{step.output_dataset} AS "
+                    f"SELECT * FROM {self.context.schema_name}.{prev_table};"
+                )
+                
+                if step.transformations:
+                    DataTransformer.transform(step.output_dataset, step.transformations, self.context)
+
+            # Áp dụng chuẩn hóa cột trong DuckDB theo output_config
+            self._apply_output_config_projection(step)
             return
 
         # CASE 2: API INVOCATION STEP (BATCH OR CHAINED LOOP)
@@ -71,14 +118,16 @@ class PipelineRunner:
         else:
             raise OmniETLException(f"Unsupported execution mode: {step.mode}")
 
+        # Áp dụng chuẩn hóa cột trong DuckDB theo output_config
+        self._apply_output_config_projection(step)
+
     def _execute_batch_step(self, step: StepConfig, driver: Any, global_context: Dict[str, Any]) -> None:
-        resolved_vars = VariableEvaluator.evaluate_all(step.variables or {}, global_context)
+        resolved_vars = VariableResolver.resolve(step.variables or {}, self.context, global_context)
         raw_df = driver.execute(endpoint=step.endpoint, variables=resolved_vars, method=step.method)
 
         if step.filters and not raw_df.empty:
             raw_df = FilterEngine.apply_filters(raw_df, step.filters)
 
-        # Ensure DataFrame has at least a dummy structure if completely empty
         if raw_df.empty or len(raw_df.columns) == 0:
             raw_df = pd.DataFrame(columns=["status_msg"])
 
@@ -102,8 +151,9 @@ class PipelineRunner:
 
         accumulated_dfs = []
         for row in loop_records:
-            loop_context = {**global_context, "loop_row": row}
-            resolved_vars = VariableEvaluator.evaluate_all(step.variables or {}, loop_context)
+            resolved_vars = VariableResolver.resolve(
+                step.variables or {}, self.context, global_context, current_loop_row=row
+            )
 
             res_df = driver.execute(endpoint=step.endpoint, variables=resolved_vars, method=step.method)
             if step.filters and not res_df.empty:
@@ -115,10 +165,8 @@ class PipelineRunner:
         if accumulated_dfs:
             merged_df = pd.concat(accumulated_dfs, ignore_index=True)
         else:
-            # Fallback to source DataFrame schema structure if loop produced no results
             merged_df = pd.DataFrame(columns=source_df.columns if not source_df.empty else ["status_msg"])
 
-        # FIX: Ensure DataFrame has at least one valid column for DuckDB table creation
         if len(merged_df.columns) == 0:
             merged_df["status_msg"] = None
 
