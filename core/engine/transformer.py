@@ -1,35 +1,43 @@
-from typing import List  # <--- Bổ sung dòng này để định nghĩa kiểu List
+# ==============================================================================
+# Filepath: core/engine/transformer.py
+# Updated_at: 2026-08-16 17:26:43
+# Description: Dispatches sequential DuckDB transformations to registered operators.
+# ==============================================================================
+
+from typing import List
 from core.common.logger import log
 from core.common.schemas import TransformRule
 from core.engine.operators.registry import OperatorRegistry
 from core.storage.context import PipelineContext
 
-# Import all operator modules to register decorators automatically
-import core.engine.operators.duckdb.aggregate
-import core.engine.operators.duckdb.cleaning
-import core.engine.operators.duckdb.enrichment
-import core.engine.operators.duckdb.join
-import core.engine.operators.duckdb.reshape
-import core.engine.operators.python.custom_script
+# Import operator package to trigger registry decorators automatically
+import core.engine.operators.duckdb
+import core.engine.operators.python
 
 
 class DataTransformer:
-    """Dispatches and executes sequential data transformation operators against PipelineContext."""
+    """Dispatches sequential transformation rules across active DuckDB tables."""
 
     @staticmethod
     def transform(table_name: str, rules: List[TransformRule], context: PipelineContext) -> str:
+        """Executes a list of transformation rules against the target table sequentially."""
         if not rules:
             return table_name
 
-        current_table = table_name
+        curr_table = table_name
 
         for rule in rules:
-            log.info(f"Applying transformation operator [{rule.operator}] on table '{current_table}'")
-            operator_inst = OperatorRegistry.get(rule.operator)
-            current_table = operator_inst.execute(
-                table_name=current_table,
-                params=rule.params,
+            rule_dict = rule.model_dump() if hasattr(rule, "model_dump") else rule
+            op_name = rule_dict.get("operator")
+            params = rule_dict.get("params", {})
+
+            log.info(f"[TRANSFORM] Executing operator [{op_name}] on table '{curr_table}'")
+            op_inst = OperatorRegistry.get(op_name)
+            
+            curr_table = op_inst.execute(
+                table_name=curr_table,
+                params=params,
                 context=context
             )
 
-        return current_table
+        return curr_table

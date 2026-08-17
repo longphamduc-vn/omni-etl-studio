@@ -1,153 +1,156 @@
+# ==============================================================================
+# Filepath: core/engine/resolver.py
+# Updated_at: 2026-08-16 17:26:43
+# Description: Resolves dynamic variables and Jinja2 templates into driver payloads.
+# ==============================================================================
+
 import re
 from typing import Any, Dict, List, Optional
 import pandas as pd
+
 from core.storage.context import PipelineContext
 
 
 class VariableResolver:
-    """Resolves variable specifications into parameters and dataset structures for Drivers."""
+    """Resolves variable mapping definitions for Driver invocation and API payloads."""
 
     @staticmethod
     def resolve(
-        var_config: Dict[str, Any], 
-        context: PipelineContext, 
-        global_context: Optional[Dict[str, Any]] = None,
-        current_loop_row: Optional[Dict[str, Any]] = None
+        var_config: Dict[str, Any],
+        context: PipelineContext,
+        loop_row: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        resolved_params: Dict[str, Any] = {}
-        resolved_datasets: Dict[str, List[Dict[str, Any]]] = {}
+        """Resolves variable maps into parameters and structured datasets for Drivers."""
+        res_params: Dict[str, Any] = {}
+        res_datasets: Dict[str, List[Dict[str, Any]]] = {}
+
+        if not var_config:
+            return {"parameters": res_params, "datasets": res_datasets}
+
+        global_scope = {
+            "inputs": getattr(context, "input_data", {}),
+            "session": getattr(context, "session", {}),
+            "loop_row": loop_row or {},
+        }
 
         for var_name, config in var_config.items():
-            # Convert Pydantic object to dict if necessary
-            cfg = config.dict() if hasattr(config, "dict") else config
-            is_dataset = cfg.get("type") == "dataset"
+            cfg = config.model_dump() if hasattr(config, "model_dump") else config
+            var_type = cfg.get("type", "parameter")
 
-            if is_dataset:
-                resolved_datasets[var_name] = VariableResolver._resolve_dataset(
-                    cfg, context, global_context or {}, current_loop_row
+            if var_type == "dataset":
+                res_datasets[var_name] = VariableResolver._resolve_dataset(
+                    cfg, context, global_scope
                 )
             else:
                 source_path = cfg.get("source") or cfg.get("jsonpath", "")
-                resolved_params[var_name] = VariableResolver._resolve_scalar(
-                    source_path, context, global_context or {}, current_loop_row
+                res_params[var_name] = VariableResolver._resolve_scalar(
+                    source_path, context, global_scope, cfg.get("default")
                 )
 
-        return {"parameters": resolved_params, "datasets": resolved_datasets}
+        return {"parameters": res_params, "datasets": res_datasets}
 
     @staticmethod
     def _resolve_scalar(
-        path: str, 
-        context: PipelineContext, 
-        global_context: Dict[str, Any], 
-        current_loop_row: Optional[Dict[str, Any]]
+        path: str, context: PipelineContext, scope: Dict[str, Any], default_val: Any
     ) -> Any:
-        raw_val = VariableResolver._extract_by_path(path, context, global_context, current_loop_row)
+        raw_val = VariableResolver._extract_path(path, context, scope)
+        if raw_val is None:
+            return default_val
         if isinstance(raw_val, list) and len(raw_val) > 0:
             return raw_val[0]
         return raw_val
 
     @staticmethod
     def _resolve_dataset(
-        config: Dict[str, Any], 
-        context: PipelineContext, 
-        global_context: Dict[str, Any], 
-        current_loop_row: Optional[Dict[str, Any]]
+        cfg: Dict[str, Any], context: PipelineContext, scope: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        columns_def = config.get("columns", [])
-        if not columns_def:
+        cols_def = cfg.get("columns", [])
+        if not cols_def:
             return []
 
-        extracted_cols: Dict[str, List[Any]] = {}
+        col_data: Dict[str, List[Any]] = {}
         max_rows = 1
 
-        for col_def in columns_def:
-            c_cfg = col_def.dict() if hasattr(col_def, "dict") else col_def
+        for c_def in cols_def:
+            c_cfg = c_def.model_dump() if hasattr(c_def, "model_dump") else c_def
             field_path = c_cfg.get("field") or c_cfg.get("name", "")
             alias = c_cfg.get("alias") or VariableResolver._clean_alias(field_path)
 
-            val = VariableResolver._extract_by_path(field_path, context, global_context, current_loop_row)
+            val = VariableResolver._extract_path(field_path, context, scope)
 
             if isinstance(val, (list, pd.Series)):
-                col_values = list(val)
-                max_rows = max(max_rows, len(col_values))
+                vals = list(val)
+                max_rows = max(max_rows, len(vals))
             elif isinstance(val, pd.DataFrame):
-                col_values = val.iloc[:, 0].tolist() if not val.empty else []
-                max_rows = max(max_rows, len(col_values))
+                vals = val.iloc[:, 0].tolist() if not val.empty else []
+                max_rows = max(max_rows, len(vals))
             else:
-                col_values = [val] if val is not None else []
+                vals = [val] if val is not None else []
 
-            extracted_cols[alias] = col_values
+            col_data[alias] = vals
 
-        if not extracted_cols:
-            return []
-
-        result_rows: List[Dict[str, Any]] = []
+        rows: List[Dict[str, Any]] = []
         for i in range(max_rows):
             row_dict = {}
-            for col_name, val_list in extracted_cols.items():
+            for col_name, val_list in col_data.items():
                 if i < len(val_list):
                     row_dict[col_name] = val_list[i]
                 elif len(val_list) == 1:
                     row_dict[col_name] = val_list[0]
                 else:
                     row_dict[col_name] = None
-            result_rows.append(row_dict)
+            rows.append(row_dict)
 
-        return result_rows
+        return rows
 
     @staticmethod
-    def _extract_by_path(
-        path: str, 
-        context: PipelineContext, 
-        global_context: Dict[str, Any], 
-        current_loop_row: Optional[Dict[str, Any]]
-    ) -> Any:
+    def _extract_path(path: str, context: PipelineContext, scope: Dict[str, Any]) -> Any:
         if not path:
             return None
 
-        # 1. Namespace loop_row
+        # Scope 1: loop_row namespace
         if path.startswith("loop_row"):
             sub_path = path.replace("loop_row.", "").replace("loop_row", "")
-            return VariableResolver._get_nested_value(current_loop_row or {}, sub_path)
+            return VariableResolver._get_nested(scope.get("loop_row", {}), sub_path)
 
-        # 2. Namespace global_input
-        if path.startswith("global_input"):
-            sub_path = path.replace("global_input.", "").replace("global_input", "")
-            input_data = global_context.get("global_input", {})
-            return VariableResolver._get_nested_value(input_data, sub_path)
+        # Scope 2: inputs namespace
+        if path.startswith("global_input") or path.startswith("inputs"):
+            sub_path = re.sub(r"^(global_input|inputs)\.?", "", path)
+            return VariableResolver._get_nested(scope.get("inputs", {}), sub_path)
 
-        # 3. Namespace session
+        # Scope 3: session namespace
         if path.startswith("session"):
             sub_path = path.replace("session.", "").replace("session", "")
-            session_data = global_context.get("session", {})
-            return VariableResolver._get_nested_value(session_data, sub_path)
+            return VariableResolver._get_nested(scope.get("session", {}), sub_path)
 
-        # 4. Namespace stepX (Truy vấn từ DuckDB Context)
+        # Scope 4: Step table extraction from DuckDB Context
         parts = path.split(".", 1)
         step_id = parts[0]
-        field_attr = parts[1] if len(parts) > 1 else ""
+        attr = parts[1] if len(parts) > 1 else ""
 
-        # Bỏ chữ '.output' nếu người dùng gõ step1.output.product_id
-        if field_attr.startswith("output."):
-            field_attr = field_attr.replace("output.", "", 1)
+        if attr.startswith("output."):
+            attr = attr.replace("output.", "", 1)
 
-        table_data = context.get_dataframe(step_id)
-        if table_data is not None and isinstance(table_data, pd.DataFrame):
-            clean_field, idx = VariableResolver._parse_array_idx(field_attr)
-            if clean_field in table_data.columns:
-                series_vals = table_data[clean_field].tolist()
-                if idx is not None:
-                    return series_vals[idx] if 0 <= idx < len(series_vals) else None
-                return series_vals
+        try:
+            df = context.get_dataframe(step_id)
+            if df is not None and not df.empty:
+                clean_attr, idx = VariableResolver._parse_idx(attr)
+                if clean_attr in df.columns:
+                    col_vals = df[clean_attr].tolist()
+                    if idx is not None:
+                        return col_vals[idx] if 0 <= idx < len(col_vals) else None
+                    return col_vals
+        except Exception:
+            pass
 
         return None
 
     @staticmethod
-    def _get_nested_value(data: Any, path: str) -> Any:
+    def _get_nested(data: Any, path: str) -> Any:
         if not path:
             return data
-        
-        clean_path, idx = VariableResolver._parse_array_idx(path)
+
+        clean_path, idx = VariableResolver._parse_idx(path)
         parts = clean_path.split(".")
         curr = data
 
@@ -156,8 +159,8 @@ class VariableResolver:
                 curr = curr[p]
             elif isinstance(curr, list):
                 if p.isdigit():
-                    idx_p = int(p)
-                    curr = curr[idx_p] if 0 <= idx_p < len(curr) else None
+                    i = int(p)
+                    curr = curr[i] if 0 <= i < len(curr) else None
                 else:
                     curr = [item.get(p) for item in curr if isinstance(item, dict) and p in item]
             else:
@@ -169,7 +172,7 @@ class VariableResolver:
         return curr
 
     @staticmethod
-    def _parse_array_idx(path: str):
+    def _parse_idx(path: str):
         match = re.search(r"^(.*)\[(\d+)\]$", path)
         if match:
             return match.group(1), int(match.group(2))
@@ -177,5 +180,5 @@ class VariableResolver:
 
     @staticmethod
     def _clean_alias(field_path: str) -> str:
-        clean_path, _ = VariableResolver._parse_array_idx(field_path)
+        clean_path, _ = VariableResolver._parse_idx(field_path)
         return clean_path.split(".")[-1]

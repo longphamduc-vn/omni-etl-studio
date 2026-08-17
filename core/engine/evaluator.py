@@ -1,47 +1,47 @@
-from typing import Any, Dict, Union
+# ==============================================================================
+# Filepath: core/engine/evaluator.py
+# Updated_at: 2026-08-16 17:26:43
+# Description: Evaluates dynamic routing conditions and expressions using DuckDB.
+# ==============================================================================
+
+from typing import Any, Dict, Optional
 from jsonpath_ng.ext import parse
-from core.common.schemas import VariableConfig, VariableRule
+
 from core.common.exceptions import EvaluatorError
 from core.common.logger import log
+from core.storage.context import PipelineContext
 
 
 class VariableEvaluator:
-    """Evaluates dynamic variable substitution maps using JSONPath syntax or static fallbacks."""
+    """Evaluates dynamic parameters and routing conditions directly against Context or DuckDB."""
 
     @staticmethod
-    def evaluate(rule: Union[VariableConfig, VariableRule], context_data: Dict[str, Any]) -> Any:
-        """Resolves a single variable rule against context data with default fallback."""
-        if not rule:
+    def evaluate_path(jsonpath_expr: str, context_data: Dict[str, Any]) -> Any:
+        """Extracts nested values from a dictionary using JSONPath expression."""
+        if not jsonpath_expr:
             return None
 
-        # 1. Attempt JSONPath extraction first if defined
-        if rule.jsonpath:
-            try:
-                jsonpath_expr = parse(rule.jsonpath)
-                matches = jsonpath_expr.find(context_data)
-                if matches and matches[0].value is not None:
-                    return matches[0].value
-                else:
-                    log.debug(f"JSONPath '{rule.jsonpath}' found no matches in context. Falling back to default.")
-            except Exception as e:
-                raise EvaluatorError(f"Failed to evaluate JSONPath [{rule.jsonpath}]: {str(e)}")
+        try:
+            expr = parse(jsonpath_expr)
+            matches = expr.find(context_data)
+            if matches and matches[0].value is not None:
+                return matches[0].value
+            return None
+        except Exception as e:
+            log.warning(f"[EVALUATOR WARNING] Failed to parse JSONPath [{jsonpath_expr}]: {str(e)}")
+            return None
 
-        # 2. Fall back to static default value
-        return rule.default
+    @staticmethod
+    def evaluate_condition(sql_cond: str, context: PipelineContext) -> bool:
+        """Evaluates a boolean SQL condition statement against the DuckDB Context."""
+        if not sql_cond:
+            return True
 
-    @classmethod
-    def evaluate_all(
-        cls, 
-        var_map: Dict[str, Union[VariableConfig, VariableRule]], 
-        context_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Evaluates a dictionary of variable rules against context data."""
-        resolved: Dict[str, Any] = {}
-
-        if not var_map:
-            return resolved
-
-        for var_name, rule in var_map.items():
-            resolved[var_name] = cls.evaluate(rule, context_data)
-
-        return resolved
+        try:
+            query = f"SELECT ({sql_cond}) AS cond_res;"
+            res_df = context.execute_sql(query)
+            if res_df is not None and not res_df.empty:
+                return bool(res_df.iloc[0]["cond_res"])
+            return False
+        except Exception as e:
+            raise EvaluatorError(f"Failed to evaluate routing SQL condition [{sql_cond}]: {str(e)}")

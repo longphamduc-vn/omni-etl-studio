@@ -1,23 +1,38 @@
+# ==============================================================================
+# Filepath: mock_api.py
+# Updated_at: 2026-08-17 06:56:00
+# Description: FastAPI Nexacro XML simulation server (Token via Dataset)
+# ==============================================================================
+
 import json
+from typing import Any, Dict, List
 import xmltodict
-from fastapi import FastAPI, Request, Response
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, Header, Request, Response
 
 app = FastAPI(
-    title="Nexacro Multi-Format API Simulation",
-    description="Backend mô phỏng các giao tiếp Dataset (JSON & XML) cho Nexacro",
-    version="2.0.0"
+    title="Nexacro XML-Only API Simulation with Auth",
+    description="Backend simulation for Nexacro Dataset XML transport and Token Authentication",
+    version="2.3.0"
 )
 
+# Secret token simulation for EMS domain
+VALID_EMS_TOKEN = "ems_bearer_token_secret_xyz123"
+
+
 def load_json_data() -> List[Dict[str, Any]]:
+    """Loads product mock database records from local JSON file."""
     try:
         with open("products_db.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         return []
 
-def build_nexacro_xml_response(error_code: int, error_msg: str, datasets: Dict[str, List[Dict[str, Any]]]) -> str:
+
+def build_nexacro_xml_response(error_code: int, error_msg: str, datasets: Dict[str, List[Dict[str, Any]]] = None) -> str:
+    """Constructs valid Nexacro XML response document with Parameters and Datasets."""
+    if datasets is None:
+        datasets = {}
+
     xml_out = '<?xml version="1.0" encoding="UTF-8"?>\n<Root>\n'
     xml_out += f'  <Parameters>\n    <Parameter id="ErrorCode">{error_code}</Parameter>\n    <Parameter id="ErrorMsg">{error_msg}</Parameter>\n  </Parameters>\n'
     
@@ -42,17 +57,59 @@ def build_nexacro_xml_response(error_code: int, error_msg: str, datasets: Dict[s
     return xml_out
 
 
-# ==========================================
-# XML ENDPOINTS
-# ==========================================
+# ==============================================================================
+# AUTHENTICATION ENDPOINT (TOKEN IN DATASET)
+# ==============================================================================
+
+@app.post("/api/auth/login")
+async def auth_login(request: Request):
+    """Endpoint cấp Token xác thực - Trả thông tin token trong Dataset ds_token."""
+    body_bytes = await request.body()
+    client_id = ""
+    
+    try:
+        if body_bytes:
+            parsed_xml = xmltodict.parse(body_bytes)
+            root = parsed_xml.get('Root', {})
+            ds = root.get('Dataset', {})
+            if isinstance(ds, list):
+                ds = ds[0] if ds else {}
+            
+            rows = ds.get('Rows', {}).get('Row', [])
+            if isinstance(rows, dict):
+                rows = [rows]
+            for row in rows:
+                cols = row.get('Col', [])
+                if isinstance(cols, dict):
+                    cols = [cols]
+                for col in cols:
+                    if col.get('@id') == 'client_id':
+                        client_id = col.get('#text', '')
+    except Exception:
+        pass
+
+    ds_token = [{
+        "access_token": VALID_EMS_TOKEN,
+        "token_type": "Bearer",
+        "expires_in": 3600
+    }]
+
+    # Trả thông tin token dưới dạng Dataset "ds_token"
+    xml_res = build_nexacro_xml_response(0, "Authentication successful", {"ds_token": ds_token})
+    return Response(content=xml_res, media_type="application/xml")
+
+
+# ==============================================================================
+# NEXACRO XML BUSINESS ENDPOINTS (TOKEN VERIFIED)
+# ==============================================================================
 
 @app.post("/api/nexacro/xml/products/search-list")
-async def search_product_list_xml(request: Request):
-    """
-    [XML] Tra danh sách sản phẩm:
-    - Dataset 1 (ds_search): Điều kiện lọc chung (category, status)
-    - Dataset 2 (ds_id_list): Danh sách các product_id cần tra cứu
-    """
+async def search_product_list_xml(request: Request, authorization: str = Header(None)):
+    """[XML] Tra cứu danh sách sản phẩm (Yêu cầu Header Authorization)."""
+    if not authorization or authorization != f"Bearer {VALID_EMS_TOKEN}":
+        xml_auth_err = build_nexacro_xml_response(-401, "Unauthorized: Invalid or Missing Auth Token")
+        return Response(content=xml_auth_err, media_type="application/xml")
+
     body_bytes = await request.body()
     category_filter = ""
     status_filter = ""
@@ -69,31 +126,33 @@ async def search_product_list_xml(request: Request):
         for ds in datasets:
             ds_id = ds.get('@id')
             
-            # 1. Xử lý Dataset 1: Điều kiện lọc chung
             if ds_id == 'ds_search':
                 rows = ds.get('Rows', {}).get('Row', [])
-                if isinstance(rows, dict): rows = [rows]
+                if isinstance(rows, dict):
+                    rows = [rows]
                 for row in rows:
                     cols = row.get('Col', [])
-                    if isinstance(cols, dict): cols = [cols]
+                    if isinstance(cols, dict):
+                        cols = [cols]
                     for col in cols:
-                        if col.get('@id') == 'category': category_filter = col.get('#text', '')
-                        if col.get('@id') == 'status': status_filter = col.get('#text', '')
+                        if col.get('@id') == 'category':
+                            category_filter = col.get('#text', '')
+                        if col.get('@id') == 'status':
+                            status_filter = col.get('#text', '')
             
-            # 2. Xử lý Dataset 2: Danh sách product_id (Đã sửa ép kiểu list cho Row)
             elif ds_id == 'ds_id_list':
                 rows = ds.get('Rows', {}).get('Row', [])
-                if isinstance(rows, dict): rows = [rows]  # Đảm bảo luôn là danh sách các Row
-                
+                if isinstance(rows, dict):
+                    rows = [rows]
                 for row in rows:
                     cols = row.get('Col', [])
-                    if isinstance(cols, dict): cols = [cols]  # Đảm bảo luôn là danh sách các Col
-                    
+                    if isinstance(cols, dict):
+                        cols = [cols]
                     for col in cols:
                         if col.get('@id') == 'product_id' and col.get('#text'):
                             target_product_ids.append(col.get('#text'))
                             
-    except Exception as e:
+    except Exception:
         pass
 
     raw_data = load_json_data()
@@ -101,8 +160,6 @@ async def search_product_list_xml(request: Request):
     for item in raw_data:
         match_cat = not category_filter or item.get("category") == category_filter
         match_status = not status_filter or item.get("inventory", {}).get("status") == status_filter
-        
-        # Kiểm tra điều kiện danh sách product_id
         match_ids = not target_product_ids or item.get("product_id") in target_product_ids
         
         if match_cat and match_status and match_ids:
@@ -115,12 +172,17 @@ async def search_product_list_xml(request: Request):
                 "sale_price": item["pricing"]["sale_price"]
             })
 
-    xml_response = build_nexacro_xml_response(0, "SUCCESS", {"ds_result_list": filtered})
+    xml_response = build_nexacro_xml_response(0, "SUCCESS", {"ds_step1_raw_search": filtered})
     return Response(content=xml_response, media_type="application/xml")
 
+
 @app.post("/api/nexacro/xml/products/detail")
-async def get_product_detail_xml(request: Request):
-    """[XML] Tra chi tiết: Input Payload XML 1 Dataset -> Output XML 3 Datasets"""
+async def get_product_detail_xml(request: Request, authorization: str = Header(None)):
+    """[XML] Tra chi tiết sản phẩm - Trả về 3 Datasets: ds_master, ds_inventory, ds_pricing."""
+    if not authorization or authorization != f"Bearer {VALID_EMS_TOKEN}":
+        xml_auth_err = build_nexacro_xml_response(-401, "Unauthorized: Invalid or Missing Auth Token")
+        return Response(content=xml_auth_err, media_type="application/xml")
+
     body_bytes = await request.body()
     product_id_search = ""
     
@@ -142,7 +204,7 @@ async def get_product_detail_xml(request: Request):
         elif isinstance(cols, dict) and cols.get('@id') == 'product_id':
             product_id_search = cols.get('#text', '')
     except Exception:
-        xml_err = build_nexacro_xml_response(-1, "Invalid XML Payload", {})
+        xml_err = build_nexacro_xml_response(-1, "Invalid XML Payload")
         return Response(content=xml_err, media_type="application/xml")
 
     raw_data = load_json_data()
@@ -150,7 +212,9 @@ async def get_product_detail_xml(request: Request):
 
     if not found:
         xml_err = build_nexacro_xml_response(-404, f"Product {product_id_search} Not Found", {
-            "ds_master": [], "ds_inventory": [], "ds_pricing": []
+            "ds_master": [],
+            "ds_inventory": [],
+            "ds_pricing": []
         })
         return Response(content=xml_err, media_type="application/xml")
 
@@ -161,17 +225,17 @@ async def get_product_detail_xml(request: Request):
         "category": found["category"],
         "brand": found.get("brand", "")
     }]
+
     ds_inventory = [{
         "product_id": found["product_id"],
         "stock_quantity": found["inventory"]["stock_quantity"],
-        "reserved_quantity": found["inventory"]["reserved_quantity"],
         "available_quantity": found["inventory"]["available_quantity"],
-        "status": found["inventory"]["status"]
+        "status": found["inventory"].get("status", "")
     }]
+
     ds_pricing = [{
         "product_id": found["product_id"],
         "cost_price": found["pricing"]["cost_price"],
-        "original_price": found["pricing"]["original_price"],
         "sale_price": found["pricing"]["sale_price"],
         "price_status": found["pricing"]["price_status"]
     }]

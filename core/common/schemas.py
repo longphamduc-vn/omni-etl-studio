@@ -1,76 +1,152 @@
+# Filepath: core/common/schemas.py
+# Updated_at: 2026-08-16 23:15:00
+# Description: Full Pydantic schemas for steps, retries, routing, execution states, and workflows.
+
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
-class ColumnConfig(BaseModel):
-    """Schema definition for table input columns and output projection."""
-    name: Optional[str] = Field(None, description="Unique column field identifier")
-    field: Optional[str] = Field(None, description="Source field path")
-    alias: Optional[str] = Field(None, description="Target column alias")
-    label: Optional[str] = Field(None, description="Human-readable label for UI rendering")
-    title: Optional[str] = Field(None, description="Display title for UI table headers")
-    type: str = Field(default="string", description="Data type: string, number, boolean")
-    default: Optional[Any] = Field(None, description="Default initial value")
-    visible: bool = Field(default=True, description="Column visibility status in UI output")
+class ExecutionStatus(str, Enum):
+    """Execution status for workflows and steps."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    PAUSED = "paused"
+    SKIPPED = "skipped"
 
 
-class WorkflowInput(BaseModel):
-    """Schema definition for dynamic user inputs submitted via UI or API."""
-    name: str = Field(..., description="Unique input variable key name")
-    label: Optional[str] = Field(None, description="Human-readable label for UI rendering")
-    type: str = Field(default="string", description="UI control type: string, number, select, boolean, table")
-    default: Optional[Any] = Field(None, description="Default initial value")
-    options: Optional[List[Any]] = Field(default=None, description="Options list if input type is select")
-    columns: Optional[List[ColumnConfig]] = Field(default=None, description="Column definitions if input type is table")
-    description: Optional[str] = Field(None, description="Tooltip or contextual help text")
+class RetryConfig(BaseModel):
+    """Configuration for automatic step execution retries."""
+
+    max_retries: int = Field(default=3, description="Maximum retry attempts")
+    delay_sec: int = Field(default=2, description="Delay between retries in seconds")
 
 
-class VariableConfig(BaseModel):
-    """Configuration for mapping execution context variables with support for datasets and aliasing."""
-    source: Optional[str] = Field(None, description="Dot-notation or JSONPath source path")
-    jsonpath: Optional[str] = Field(None, description="Legacy JSONPath query expression")
-    type: Optional[str] = Field(default="parameter", description="Variable type: parameter or dataset")
-    default: Optional[Any] = Field(None, description="Fallback static default value if evaluation is null")
-    columns: Optional[List[ColumnConfig]] = Field(default=None, description="Column mappings for datasets")
+class ErrorHandling(BaseModel):
+    """Configuration for handling business and execution errors."""
+
+    code_field: str = Field(default="errcode", description="Payload error code key")
+    msg_field: str = Field(default="errmsg", description="Payload error message key")
+    on_error: str = Field(
+        default="pause_for_manual",
+        description="Strategy: pause_for_manual, skip_row, continue, fail",
+    )
 
 
-class FilterCondition(BaseModel):
-    """Schema definition for pre-call or post-fetch row filtering logic."""
-    field: str = Field(..., description="Target dataset column name")
-    operator: str = Field(..., description="Filter comparison operator (e.g., eq, in, gt, contains)")
-    value: Any = Field(..., description="Expected value to compare against")
+class StepRouting(BaseModel):
+    """Routing rule configuration for step branching."""
+
+    next_step: Optional[str] = Field(default=None, description="Explicit next step ID")
+    condition: Optional[str] = Field(
+        default=None, description="DuckDB SQL expression returning boolean"
+    )
 
 
 class TransformRule(BaseModel):
-    """Schema definition for DuckDB pipeline transformation operators."""
-    operator: str = Field(..., description="Transformation operator name (e.g., handle_nulls, deduplicate, group_by)")
-    params: Dict[str, Any] = Field(default_factory=dict, description="Operator execution parameters")
+    """Single transformation operator specification."""
 
-
-class OutputConfig(BaseModel):
-    """Schema definition for custom UI table output rendering."""
-    display_title: Optional[str] = Field(None, description="Human-readable table title for Streamlit UI")
-    columns: List[ColumnConfig] = Field(default_factory=list, description="Column visibility and label mapping")
+    operator: str = Field(description="Operator name: sql_transform, accumulate_data")
+    params: Dict[str, Any] = Field(
+        default_factory=dict, description="Operator execution parameters"
+    )
 
 
 class StepConfig(BaseModel):
-    """Schema definition for an individual pipeline step execution stage."""
-    step_id: str = Field(..., description="Unique step identifier")
-    driver: str = Field(..., description="Protocol driver identifier (e.g., nexacro, rest, passthrough)")
-    mode: str = Field(default="batch", description="Execution mode: batch or chained_loop")
-    method: str = Field(default="POST", description="HTTP/RPC protocol method (e.g., GET, POST, PUT, DELETE)")
-    endpoint: str = Field(default="", description="Target HTTP or RPC API endpoint URL")
-    variables: Dict[str, Any] = Field(default_factory=dict, description="Variable resolution rules")
-    filters: List[FilterCondition] = Field(default_factory=list, description="List of dataset row filters")
-    transformations: List[TransformRule] = Field(default_factory=list, description="Ordered list of DuckDB transformation rules")
-    output_dataset: str = Field(..., description="Target DuckDB table name to store step results")
-    output_config: Optional[OutputConfig] = Field(None, description="Custom UI rendering configuration")
-    loop_source: Optional[str] = Field(None, description="Source table name for chained_loop execution mode")
+    """Pipeline execution step definition."""
 
+    step_id: str = Field(description="Unique identifier for the step")
+    driver: str = Field(default="passthrough", description="Protocol driver type")
+    mode: str = Field(default="batch", description="Execution mode: batch, chained_loop")
+    endpoint: Optional[str] = Field(default=None, description="API endpoint URL")
+    inputs: List[str] = Field(
+        default_factory=list, description="Input dataset IDs for DAG routing"
+    )
+    variables: Dict[str, Any] = Field(
+        default_factory=dict, description="Variable mappings"
+    )
+    transformations: List[TransformRule] = Field(
+        default_factory=list, description="Transformation sequence"
+    )
+    retry_config: Optional[RetryConfig] = Field(
+        default=None, description="Retry configuration"
+    )
+    error_handling: Optional[ErrorHandling] = Field(
+        default=None, description="Error handling strategy"
+    )
+    routing: Optional[StepRouting] = Field(
+        default=None, description="Branching routing rule"
+    )
+    output_dataset: str = Field(description="Output DuckDB table name")
+    output_config: Optional[Dict[str, Any]] = Field(
+        default=None, description="UI presentation and column format config"
+    )
+
+
+
+
+class TableColumnDefinition(BaseModel):
+    """Definition for a single column inside a table input parameter."""
+
+    name: str = Field(description="Column field name")
+    label: Optional[str] = Field(default="", description="Column display label")
+    type: str = Field(default="string", description="Column data type")
+    default: Optional[Any] = Field(default=None, description="Column default value")
+
+
+class InputDefinition(BaseModel):
+    """Definition for a workflow-level input parameter."""
+
+    name: str = Field(description="Variable name")
+    label: Optional[str] = Field(default="", description="Display label for UI")
+    type: str = Field(default="string", description="Data type: string, integer, boolean, json, table")
+    required: bool = Field(default=True, description="Whether the input is mandatory")
+    default: Optional[Any] = Field(default=None, description="Default value if not provided")
+    description: Optional[str] = Field(default="", description="Parameter description")
+    columns: Optional[List[TableColumnDefinition]] = Field(
+        default_factory=list, description="Nested column definitions for table type inputs"
+    )
 
 class WorkflowConfig(BaseModel):
-    """Declarative workflow execution pipeline schema definition."""
-    workflow_id: str = Field(..., description="Unique workflow catalog identifier")
-    description: Optional[str] = Field(None, description="Detailed pipeline summary and execution flow overview")
-    inputs: List[WorkflowInput] = Field(default_factory=list, description="Declarative input parameter schemas")
-    steps: List[StepConfig] = Field(..., description="Sequential list of execution steps")
+    """Complete workflow specification model."""
+
+    workflow_id: str = Field(description="Unique workflow identifier")
+    workflow_name: Optional[str] = Field(
+        default="", description="Human-readable workflow display name"
+    )
+    domain_path: Optional[str] = Field(
+        default="", description="Domain path derived automatically from directory"
+    )
+    workflow_type: str = Field(default="business", description="Type: business, init")
+    description: Optional[str] = Field(default="", description="Workflow overview")
+    inputs: List[InputDefinition] = Field(
+        default_factory=list, description="Global input definitions"
+    )
+    steps: List[StepConfig] = Field(
+        default_factory=list, description="Sequential step pipeline"
+    )
+
+
+class StepExecutionState(BaseModel):
+    """Runtime execution state for an individual step."""
+
+    step_id: str
+    status: ExecutionStatus = ExecutionStatus.PENDING
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    error_message: Optional[str] = None
+    rows_processed: int = 0
+
+
+class WorkflowExecutionState(BaseModel):
+    """Runtime state for an entire workflow run."""
+
+    run_id: str
+    workflow_id: str
+    status: ExecutionStatus = ExecutionStatus.PENDING
+    current_step: Optional[str] = None
+    step_states: Dict[str, StepExecutionState] = Field(default_factory=dict)
+    created_at: str
+    updated_at: str

@@ -1,0 +1,47 @@
+{
+  "workflow_id": "ems_session_init",
+  "workflow_type": "init",
+  "description": "Tự động đăng nhập qua Nexacro XML cấp Token xác thực Session cho Domain EMS",
+  "inputs": [],
+  "steps": [
+    {
+      "step_id": "step_fetch_ems_token",
+      "driver": "nexacro",
+      "mode": "batch",
+      "endpoint": "http://127.0.0.1:8000/api/auth/login",
+      "inputs": [],
+      "variables": {
+        "headers": {
+          "Content-Type": "application/xml",
+          "Accept": "application/xml"
+        },
+        "datasets": {
+          "ds_login": [
+            {
+              "client_id": "ems_client_app"
+            }
+          ]
+        }
+      },
+      "transformations": [
+        {
+          "operator": "sql_transform",
+          "params": {
+            "query": "SELECT 'Bearer ' || access_token AS auth_header, access_token, token_type, expires_in FROM {{ active_table }}"
+          }
+        }
+      ],
+      "retry_config": {
+        "max_retries": 3,
+        "delay_sec": 1
+      },
+      "error_handling": {
+        "code_field": "ErrorCode",
+        "msg_field": "ErrorMsg",
+        "on_error": "fail"
+      },
+      "output_dataset": "ds_session_token",
+      "output_config": null
+    }
+  ]
+}

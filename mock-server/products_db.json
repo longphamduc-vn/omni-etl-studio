@@ -6,37 +6,37 @@
     "category": "Thời trang",
     "brand": "Uniqlo",
     "inventory": {
-      "stock_quantity": 150,
-      "reserved_quantity": 12,
-      "available_quantity": 138,
+      "stock_quantity": 120,
+      "reserved_quantity": 15,
+      "available_quantity": 105,
       "reorder_level": 20,
       "status": "IN_STOCK"
     },
     "pricing": {
-      "cost_price": 120000,
-      "original_price": 250000,
-      "sale_price": 199000,
+      "cost_price": 150000,
+      "original_price": 350000,
+      "sale_price": 299000,
       "price_status": "ON_SALE",
-      "discount_percentage": 20
+      "discount_percentage": 15
     }
   },
   {
     "product_id": "SP-002",
-    "product_name": "Quần Jean Nam Dáng Slimfit",
-    "sku": "JEAN-BLU-32",
+    "product_name": "Quần Jean Nữ Lưng Cao",
+    "sku": "JEAN-BLU-M",
     "category": "Thời trang",
-    "brand": "Levis",
+    "brand": "Levi's",
     "inventory": {
-      "stock_quantity": 0,
-      "reserved_quantity": 0,
-      "available_quantity": 0,
-      "reorder_level": 15,
-      "status": "OUT_OF_STOCK"
+      "stock_quantity": 45,
+      "reserved_quantity": 3,
+      "available_quantity": 42,
+      "reorder_level": 10,
+      "status": "IN_STOCK"
     },
     "pricing": {
-      "cost_price": 350000,
-      "original_price": 650000,
-      "sale_price": 650000,
+      "cost_price": 450000,
+      "original_price": 950000,
+      "sale_price": 950000,
       "price_status": "REGULAR",
       "discount_percentage": 0
     }
@@ -64,52 +64,31 @@
   },
   {
     "product_id": "SP-004",
-    "product_name": "Tai Nghe Bluetooth Chống Ồn Wireless",
-    "sku": "EARPHONE-BLK-01",
+    "product_name": "Điện Thoại iPhone 15 Pro Max",
+    "sku": "PHONE-15PM-256",
     "category": "Điện tử",
-    "brand": "Sony",
+    "brand": "Apple",
     "inventory": {
-      "stock_quantity": 45,
-      "reserved_quantity": 8,
-      "available_quantity": 37,
-      "reorder_level": 10,
-      "status": "IN_STOCK"
+      "stock_quantity": 8,
+      "reserved_quantity": 6,
+      "available_quantity": 2,
+      "reorder_level": 5,
+      "status": "LOW_STOCK"
     },
     "pricing": {
-      "cost_price": 1800000,
-      "original_price": 3200000,
-      "sale_price": 2790000,
+      "cost_price": 26000000,
+      "original_price": 34990000,
+      "sale_price": 29990000,
       "price_status": "ON_SALE",
-      "discount_percentage": 12
+      "discount_percentage": 14
     }
   },
   {
     "product_id": "SP-005",
-    "product_name": "Chuột Không Dây Ergonomic",
-    "sku": "MOUSE-GRY-02",
-    "category": "Điện tử",
-    "brand": "Logitech",
-    "inventory": {
-      "stock_quantity": 8,
-      "reserved_quantity": 3,
-      "available_quantity": 5,
-      "reorder_level": 15,
-      "status": "LOW_STOCK"
-    },
-    "pricing": {
-      "cost_price": 400000,
-      "original_price": 750000,
-      "sale_price": 690000,
-      "price_status": "ON_SALE",
-      "discount_percentage": 8
-    }
-  },
-  {
-    "product_id": "SP-006",
-    "product_name": "Bàn Phím Cơ Đèn RGB Wireless",
-    "sku": "KEYBOARD-RGB-87",
-    "category": "Điện tử",
-    "brand": "Keychron",
+    "product_name": "Tai Nghe Không Dây Chống Ồn WH-1000XM5",
+    "sku": "EAR-SONY-XM5",
+    "category": "Phụ kiện điện tử",
+    "brand": "Sony",
     "inventory": {
       "stock_quantity": 25,
       "reserved_quantity": 2,
@@ -118,40 +97,124 @@
       "status": "IN_STOCK"
     },
     "pricing": {
-      "cost_price": 1100000,
-      "original_price": 1850000,
-      "sale_price": 1850000,
+      "cost_price": 4800000,
+      "original_price": 8490000,
+      "sale_price": 6990000,
+      "price_status": "ON_SALE",
+      "discount_percentage": 18
+    }
+  },
+  {
+    "product_id": "SP-006",
+    "product_name": "Son Thỏi Lì Kem Mịn",
+    "sku": "LIP-MAC-CHILI",
+    "category": "Mỹ phẩm",
+    "brand": "MAC",
+    "inventory": {
+      "stock_quantity": 150,
+      "reserved_quantity": 20,
+      "available_quantity": 130,
+      "reorder_level": 30,
+      "status": "IN_STOCK"
+    },
+    "pricing": {
+      "cost_price": 280000,
+      "original_price": 650000,
+      "sale_price": 550000,
+      "price_status": "ON_SALE",
+      "discount_percentage": 15
+    }
+  },
+  {
+    "product_id": "SP-007",
+    "product_name": "Kem Chống Nắng Nâng Tông SPF50+",
+    "sku": "SUN-LRP-50",
+    "category": "Mỹ phẩm",
+    "brand": "La Roche-Posay",
+    "inventory": {
+      "stock_quantity": 0,
+      "reserved_quantity": 0,
+      "available_quantity": 0,
+      "reorder_level": 25,
+      "status": "OUT_OF_STOCK"
+    },
+    "pricing": {
+      "cost_price": 210000,
+      "original_price": 495000,
+      "sale_price": 495000,
       "price_status": "REGULAR",
       "discount_percentage": 0
     }
   },
   {
-    "product_id": "SP-007",
-    "product_name": "Nồi Chiên Không Dầu 5.5L",
-    "sku": "AIRFRYER-SLV-55",
+    "product_id": "SP-008",
+    "product_name": "Bình Giữ Nhiệt Lưỡng Tính 500ml",
+    "sku": "FLASK-GRN-500",
     "category": "Gia dụng",
-    "brand": "Philips",
+    "brand": "Lock&Lock",
     "inventory": {
-      "stock_quantity": 60,
-      "reserved_quantity": 10,
-      "available_quantity": 50,
-      "reorder_level": 12,
+      "stock_quantity": 95,
+      "reserved_quantity": 5,
+      "available_quantity": 90,
+      "reorder_level": 15,
       "status": "IN_STOCK"
     },
     "pricing": {
-      "cost_price": 1500000,
-      "original_price": 2900000,
-      "sale_price": 2250000,
+      "cost_price": 120000,
+      "original_price": 320000,
+      "sale_price": 245000,
       "price_status": "ON_SALE",
-      "discount_percentage": 22
+      "discount_percentage": 23
     }
   },
   {
-    "product_id": "SP-008",
-    "product_name": "Máy Hút Bụi Cầm Tay Thông Minh",
-    "sku": "VACUUM-WHT-01",
+    "product_id": "SP-009",
+    "product_name": "Nồi Chiên Không Dầu Điện Tử 5.5L",
+    "sku": "AFRYER-PHIL-55",
     "category": "Gia dụng",
-    "brand": "Xiaomi",
+    "brand": "Philips",
+    "inventory": {
+      "stock_quantity": 12,
+      "reserved_quantity": 1,
+      "available_quantity": 11,
+      "reorder_level": 3,
+      "status": "IN_STOCK"
+    },
+    "pricing": {
+      "cost_price": 1700000,
+      "original_price": 3890000,
+      "sale_price": 2790000,
+      "price_status": "ON_SALE",
+      "discount_percentage": 28
+    }
+  },
+  {
+    "product_id": "SP-010",
+    "product_name": "Bàn Phím Cơ Không Dây K2",
+    "sku": "KEY-KCH-K2",
+    "category": "Phụ kiện máy tính",
+    "brand": "Keychron",
+    "inventory": {
+      "stock_quantity": 30,
+      "reserved_quantity": 4,
+      "available_quantity": 26,
+      "reorder_level": 8,
+      "status": "IN_STOCK"
+    },
+    "pricing": {
+      "cost_price": 1100000,
+      "original_price": 1950000,
+      "sale_price": 1750000,
+      "price_status": "ON_SALE",
+      "discount_percentage": 10
+    }
+  },
+  {
+    "product_id": "SP-011",
+    "product_name": "Balo Laptop Chống Nước 15.6 inch",
+    "sku": "BAG-TARG-15",
+    "category": "Phụ kiện",
+    "brand": "Targus",
     "inventory": {
       "stock_quantity": 4,
       "reserved_quantity": 1,
@@ -160,51 +223,93 @@
       "status": "LOW_STOCK"
     },
     "pricing": {
-      "cost_price": 700000,
-      "original_price": 1300000,
-      "sale_price": 1100000,
+      "cost_price": 350000,
+      "original_price": 850000,
+      "sale_price": 680000,
       "price_status": "ON_SALE",
-      "discount_percentage": 15
+      "discount_percentage": 20
     }
   },
   {
-    "product_id": "SP-009",
-    "product_name": "Bình Giữ Nhiệt Inox 800ml",
-    "sku": "FLASK-BLK-800",
-    "category": "Gia dụng",
-    "brand": "Lock&Lock",
+    "product_id": "SP-012",
+    "product_name": "Đồng Hồ Thông Minh Watch 6",
+    "sku": "WATCH-SAM-W6",
+    "category": "Điện tử",
+    "brand": "Samsung",
     "inventory": {
-      "stock_quantity": 200,
-      "reserved_quantity": 15,
-      "available_quantity": 185,
-      "reorder_level": 30,
+      "stock_quantity": 18,
+      "reserved_quantity": 2,
+      "available_quantity": 16,
+      "reorder_level": 5,
       "status": "IN_STOCK"
     },
     "pricing": {
-      "cost_price": 180000,
-      "original_price": 380000,
-      "sale_price": 290000,
+      "cost_price": 3900000,
+      "original_price": 6990000,
+      "sale_price": 5490000,
       "price_status": "ON_SALE",
-      "discount_percentage": 23
+      "discount_percentage": 21
     }
   },
   {
-    "product_id": "SP-010",
-    "product_name": "Balo Tản Nhiệt Chống Nước Laptop 15.6 inch",
-    "sku": "BACKPACK-GRY-15",
-    "category": "Thời trang",
-    "brand": "Tigernu",
+    "product_id": "SP-013",
+    "product_name": "Sữa Tắm Dưỡng Ẩm Chuyên Sâu 500ml",
+    "sku": "BODY-DOVE-500",
+    "category": "Chăm sóc cá nhân",
+    "brand": "Dove",
     "inventory": {
-      "stock_quantity": 0,
-      "reserved_quantity": 0,
-      "available_quantity": 0,
-      "reorder_level": 8,
-      "status": "OUT_OF_STOCK"
+      "stock_quantity": 240,
+      "reserved_quantity": 12,
+      "available_quantity": 228,
+      "reorder_level": 50,
+      "status": "IN_STOCK"
     },
     "pricing": {
-      "cost_price": 220000,
-      "original_price": 490000,
-      "sale_price": 490000,
+      "cost_price": 650000,
+      "original_price": 185000,
+      "sale_price": 155000,
+      "price_status": "ON_SALE",
+      "discount_percentage": 16
+    }
+  },
+  {
+    "product_id": "SP-014",
+    "product_name": "Sách Thao Túng Tâm Lý",
+    "sku": "BOOK-PSY-01",
+    "category": "Sách",
+    "brand": "NXB Trẻ",
+    "inventory": {
+      "stock_quantity": 500,
+      "reserved_quantity": 45,
+      "available_quantity": 455,
+      "reorder_level": 100,
+      "status": "IN_STOCK"
+    },
+    "pricing": {
+      "cost_price": 40000,
+      "original_price": 120000,
+      "sale_price": 96000,
+      "price_status": "ON_SALE",
+      "discount_percentage": 20
+    }
+  },
+  {
+    "product_id": "SP-015",
+    "product_name": "Cà Phê Hạt Rang Nguyên Chất 1kg",
+    "sku": "COFFEE-ROAST-1K",
+    "category": "Thực phẩm",
+    "brand": "Trung Nguyên",
+    "inventory": {
+      "stock_quantity": 60,
+      "reserved_quantity": 8,
+      "available_quantity": 52,
+      "reorder_level": 15,
+      "status": "IN_STOCK"
+    },
+    "pricing": {
+      "cost_price": 140000,
+      "original_price": 280000,
+      "sale_price": 280000,
       "price_status": "REGULAR",
       "discount_percentage": 0
     }

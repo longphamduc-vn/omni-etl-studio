@@ -1,119 +1,160 @@
+# Filepath: drivers/nexacro.py
+# Updated_at: 2026-08-17 07:05:00
+# Description: Enhanced Nexacro Driver with comprehensive Logging for payloads and responses.
+
+from typing import Any, Dict, Optional
 import xml.etree.ElementTree as ET
-from typing import Any, Dict
 import pandas as pd
 import requests
+
+from core.common.exceptions import BusinessError, DriverError
 from core.common.logger import log
 from drivers.base import BaseDriver, DriverRegistry
 
 
 @DriverRegistry.register("nexacro")
 class NexacroDriver(BaseDriver):
-    """Packs resolved variables into Nexacro XML Payload, sends HTTP request, and parses multi-dataset XML Responses."""
+    """Driver handling Nexacro XML protocol serialization and dynamic HTTP transport with active logging."""
 
-    @staticmethod
-    def build_xml_payload(resolved_vars: Dict[str, Any]) -> str:
-        root = ET.Element("Root", {"xmlns": "http://tobesoft.com"})
+    def execute(
+        self,
+        endpoint: str,
+        variables: Dict[str, Any],
+        error_cfg: Optional[Dict[str, Any]] = None,
+        method: str = "POST"
+    ) -> pd.DataFrame:
+        """Constructs Nexacro XML payload, executes HTTP POST, and extracts Datasets with explicit logs."""
+        log.info(f"[NEXACRO REQUEST] Invoking endpoint: {endpoint}")
+
+        params = variables.get("parameters", {})
+        datasets = variables.get("datasets", {})
         
-        # 1. Build Parameters
-        params = resolved_vars.get("parameters", {})
-        if params:
-            params_node = ET.SubElement(root, "Parameters")
-            for param_id, val in params.items():
-                p_node = ET.SubElement(params_node, "Parameter", {"id": param_id})
-                p_node.text = "" if val is None else str(val)
+        req_headers = variables.get("headers", {})
+        if not isinstance(req_headers, dict):
+            req_headers = {}
 
-        # 2. Build Datasets
-        datasets = resolved_vars.get("datasets", {})
-        for ds_id, rows in datasets.items():
-            ds_node = ET.SubElement(root, "Dataset", {"id": ds_id})
-            
-            if rows and isinstance(rows, list) and len(rows) > 0:
-                col_info_node = ET.SubElement(ds_node, "ColumnInfo")
-                sample_row = rows[0]
-                for col_name in sample_row.keys():
-                    ET.SubElement(col_info_node, "Column", {
-                        "id": col_name,
-                        "type": "STRING",
-                        "size": "256"
-                    })
-                
-                rows_node = ET.SubElement(ds_node, "Rows")
-                for row_data in rows:
-                    row_node = ET.SubElement(rows_node, "Row")
-                    for col_id, col_val in row_data.items():
-                        col_node = ET.SubElement(row_node, "Col", {"id": col_id})
-                        col_node.text = "" if col_val is None else str(col_val)
+        if "Content-Type" not in req_headers:
+            req_headers["Content-Type"] = "application/xml; charset=UTF-8"
 
-        return '<?xml version="1.0" encoding="utf-8"?>\n' + ET.tostring(root, encoding="utf-8").decode("utf-8")
+        # Log Headers gửi đi (Đã ẩn bớt thông tin nhạy cảm nếu cần)
+        log.info(f"[NEXACRO HEADERS] {req_headers}")
 
-    @staticmethod
-    def parse_xml_response(xml_string: str) -> pd.DataFrame:
-        if not xml_string or not xml_string.strip():
-            return pd.DataFrame()
+        xml_payload = self._build_xml_payload(params, datasets)
+        
+        # 🎯 Đổi sang log.info để luôn hiển thị Payload XML
+        log.info(f"[NEXACRO PAYLOAD OUTGOING]\n{xml_payload}")
 
         try:
-            root = ET.fromstring(xml_string)
-        except Exception as e:
-            log.error(f"Failed to parse Nexacro XML response: {str(e)}")
-            return pd.DataFrame()
-
-        parsed_datasets: Dict[str, pd.DataFrame] = {}
-
-        for ds_node in root.findall("Dataset"):
-            ds_id = ds_node.get("id", "ds_default")
-            rows_data = []
-
-            rows_node = ds_node.find("Rows")
-            if rows_node is not None:
-                for row_node in rows_node.findall("Row"):
-                    row_dict = {}
-                    for col_node in row_node.findall("Col"):
-                        col_id = col_node.get("id")
-                        if col_id:
-                            row_dict[col_id] = col_node.text
-                    rows_data.append(row_dict)
-
-            parsed_datasets[ds_id] = pd.DataFrame(rows_data)
-
-        if not parsed_datasets:
-            return pd.DataFrame()
-
-        if len(parsed_datasets) == 1:
-            return list(parsed_datasets.values())[0]
-
-        # Merge đa Dataset (ds_master, ds_inventory, ds_pricing)
-        merged_df = None
-        for ds_id, df in parsed_datasets.items():
-            if df.empty:
-                continue
-            if merged_df is None:
-                merged_df = df
-            else:
-                join_keys = [col for col in ["product_id", "id"] if col in merged_df.columns and col in df.columns]
-                if join_keys:
-                    merged_df = pd.merge(merged_df, df, on=join_keys, how="outer", suffixes=("", f"_{ds_id}"))
-                else:
-                    merged_df = pd.concat([merged_df, df], axis=1)
-
-        return merged_df if merged_df is not None else pd.DataFrame()
-
-    def execute(self, endpoint: str, variables: Dict[str, Any], method: str = "POST") -> pd.DataFrame:
-        xml_payload = self.build_xml_payload(variables)
-        headers = {
-            "Content-Type": "application/xml",
-            "Accept": "application/xml"
-        }
-
-        try:
-            response = requests.request(
-                method=method,
-                url=endpoint,
+            resp = requests.post(
+                endpoint,
                 data=xml_payload.encode("utf-8"),
-                headers=headers,
+                headers=req_headers,
                 timeout=30
             )
-            response.raise_for_status()
-            return self.parse_xml_response(response.text)
+            log.info(f"[NEXACRO HTTP STATUS] {resp.status_code}")
+            log.info(f"[NEXACRO RAW RESPONSE BODY]\n{resp.text}")
+
+            if resp.status_code != 200:
+                raise DriverError(f"HTTP Error {resp.status_code}: {resp.text}")
         except Exception as e:
-            log.error(f"Error executing Nexacro HTTP request to [{endpoint}]: {str(e)}")
-            return pd.DataFrame()
+            log.error(f"[NEXACRO TRANSPORT ERROR] {str(e)}")
+            raise DriverError(f"Nexacro transport failure: {str(e)}")
+
+        try:
+            parsed_data = self._parse_xml_response(resp.text)
+            log.info(f"[NEXACRO PARSED DATA] Parameters: {parsed_data.get('parameters')} | Datasets: {list(parsed_data.get('datasets', {}).keys())}")
+        except Exception as e:
+            log.error(f"[NEXACRO PARSE ERROR] Raw text failed to parse: {resp.text}")
+            raise DriverError(f"Nexacro XML response parse error: {str(e)}")
+
+        # Inspect Business Errors (ErrorCode / ErrorMsg)
+        self.inspect_response(parsed_data, error_cfg)
+
+        # Return primary output Dataset as DataFrame
+        out_datasets = parsed_data.get("datasets", {})
+        if out_datasets:
+            first_ds_key = list(out_datasets.keys())[0]
+            df_res = pd.DataFrame(out_datasets[first_ds_key])
+            log.info(f"[NEXACRO OUTPUT DATAFRAME] Dataset '{first_ds_key}' with {len(df_res)} rows.")
+            return df_res
+
+        log.warning("[NEXACRO OUTPUT DATASET] No output datasets extracted from response XML.")
+        return pd.DataFrame()
+
+    def inspect_response(self, payload: Dict[str, Any], error_cfg: Optional[Dict[str, Any]]) -> None:
+        """Inspects Nexacro ErrorCode and ErrorMsg parameter fields dynamically."""
+        if not error_cfg:
+            error_cfg = {}
+
+        code_key = error_cfg.get("code_field", "ErrorCode")
+        msg_key = error_cfg.get("msg_field", "ErrorMsg")
+        success_val = error_cfg.get("success_value", 0)
+
+        params = payload.get("parameters", {})
+        raw_code = params.get(code_key, 0)
+        err_msg = params.get(msg_key, "Unknown Nexacro error")
+
+        try:
+            err_code = int(raw_code)
+        except (ValueError, TypeError):
+            err_code = -1
+
+        if err_code != success_val:
+            log.error(f"[NEXACRO BUSINESS ERROR] Code: {err_code}, Message: {err_msg}")
+            raise BusinessError(code=err_code, msg=err_msg, payload=payload)
+
+    def _build_xml_payload(self, params: Dict[str, Any], datasets: Dict[str, Any]) -> str:
+        root = ET.Element("Root", xmlns="http://www.nexacroplatform.com/platform/dataset")
+        p_elem = ET.SubElement(root, "Parameters")
+
+        if isinstance(params, dict):
+            for k, v in params.items():
+                param = ET.SubElement(p_elem, "Parameter", id=str(k))
+                param.text = str(v) if v is not None else ""
+
+        if isinstance(datasets, dict):
+            for ds_id, rows in datasets.items():
+                ds_elem = ET.SubElement(root, "Dataset", id=ds_id)
+                if rows and isinstance(rows, list):
+                    cols = list(rows[0].keys())
+                    col_info = ET.SubElement(ds_elem, "ColumnInfo")
+                    for c in cols:
+                        ET.SubElement(col_info, "Column", id=str(c), type="STRING", size="256")
+
+                    rows_elem = ET.SubElement(ds_elem, "Rows")
+                    for r in rows:
+                        row_elem = ET.SubElement(rows_elem, "Row")
+                        for c in cols:
+                            col_val = ET.SubElement(row_elem, "Col", id=str(c))
+                            col_val.text = str(r.get(c, "")) if r.get(c) is not None else ""
+
+        return ET.tostring(root, encoding="unicode")
+
+    def _parse_xml_response(self, xml_str: str) -> Dict[str, Any]:
+        root = ET.fromstring(xml_str)
+        extracted_params = {}
+        extracted_datasets = {}
+
+        # Parse Parameters
+        for p in root.findall(".//Parameter"):
+            pid = p.attrib.get("id")
+            if pid:
+                extracted_params[pid] = p.text or ""
+
+        # Parse Datasets
+        for ds in root.findall(".//Dataset"):
+            ds_id = ds.attrib.get("id", "ds_out")
+            rows_data = []
+            cols = [c.attrib.get("id") for c in ds.findall(".//ColumnInfo/Column")]
+
+            for row in ds.findall(".//Rows/Row"):
+                row_dict = {}
+                for col in row.findall("Col"):
+                    cid = col.attrib.get("id")
+                    if cid in cols or not cols:
+                        row_dict[cid] = col.text or ""
+                rows_data.append(row_dict)
+
+            extracted_datasets[ds_id] = rows_data
+
+        return {"parameters": extracted_params, "datasets": extracted_datasets}

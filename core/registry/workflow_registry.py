@@ -1,73 +1,89 @@
+# Filepath: core/registry/workflow_registry.py
+# Updated_at: 2026-08-16 23:25:00
+# Description: Registry assigning domain_path and preserving workflow_name metadata.
+
+import json
 from pathlib import Path
-from typing import Dict, List, Optional
-from config.settings import settings
-from core.common.exceptions import WorkflowValidationError
+from typing import Any, Dict, List, Optional
 from core.common.logger import log
 from core.common.schemas import WorkflowConfig
-from core.registry.validator import WorkflowValidator
 
 
 class WorkflowRegistry:
-    """Registry managing workflow definitions by dynamically scanning JSON files in workflows directory."""
+    """Registry discovering and indexing workflows based entirely on physical directory layout."""
 
-    def __init__(self, workflows_dir: Optional[Path] = None):
-        self.workflows_dir = workflows_dir or settings.WORKFLOWS_DIR
-        self._registry: Dict[str, WorkflowConfig] = {}
-        self._category_map: Dict[str, List[str]] = {}
-        self._scan_and_load_workflows()
+    def __init__(self, root_dir: str = "workflows"):
+        self.root_dir = Path(root_dir)
+        self._workflows: Dict[str, WorkflowConfig] = {}
+        self.reload()
 
-    def _scan_and_load_workflows(self) -> None:
-        """Recursively scans the workflows directory for any *.json files and validates them."""
-        self._registry.clear()
-        self._category_map.clear()
-        
-        if not self.workflows_dir.exists():
-            log.warning(f"Workflows directory does not exist: {self.workflows_dir}")
+    def reload(self) -> None:
+        """Scans workflows/ folder and derives domain_path strictly from physical file directory."""
+        self._workflows.clear()
+        if not self.root_dir.exists():
+            log.warning(f"[REGISTRY WARNING] Root workflow directory '{self.root_dir}' missing.")
             return
 
-        json_files = list(self.workflows_dir.glob("**/*.json"))
-        
-        for file_path in json_files:
-            if file_path.name == "catalog.json":
-                continue
-                
+        for json_file in self.root_dir.rglob("*.json"):
             try:
-                wf_config = WorkflowValidator.validate_file(str(file_path))
-                
-                # Categorize based on relative folder path
-                relative_path = file_path.relative_to(self.workflows_dir)
-                category = relative_path.parent.as_posix()
-                if category == ".":
-                    category = "General / Root"
+                with open(json_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
 
-                if category not in self._category_map:
-                    self._category_map[category] = []
-                self._category_map[category].append(wf_config.workflow_id)
+                # Tự động tính domain_path từ thư mục chứa
+                rel_path = json_file.relative_to(self.root_dir)
+                parent_dir = str(rel_path.parent).replace("\\", "/")
+                computed_domain = "general" if parent_dir == "." else parent_dir
 
-                self._registry[wf_config.workflow_id] = wf_config
-                log.debug(f"Loaded workflow [{wf_config.workflow_id}] from {file_path}")
+                data["domain_path"] = computed_domain
+                wf = WorkflowConfig(**data)
 
-            except WorkflowValidationError as e:
-                log.error(f"Skipping invalid workflow file {file_path}: {str(e)}")
+                if wf.workflow_type == "init" or wf.workflow_id.endswith("__init__"):
+                    full_key = f"{wf.domain_path}/__init__".strip("/")
+                else:
+                    full_key = f"{wf.domain_path}/{wf.workflow_id}".strip("/")
 
-        log.info(f"Successfully loaded {len(self._registry)} workflows directly from JSON files.")
+                self._workflows[full_key] = wf
+                log.info(f"[PHYSICAL INDEX] {rel_path} -> domain_path: '{wf.domain_path}' | name: '{wf.workflow_name}'")
+            except Exception as e:
+                log.error(f"[REGISTRY ERROR] Failed loading '{json_file}': {str(e)}")
 
-    def get_workflow(self, workflow_id: str) -> WorkflowConfig:
-        """Retrieves a validated WorkflowConfig by workflow_id."""
-        if workflow_id not in self._registry:
-            self._scan_and_load_workflows()
-            
-        if workflow_id not in self._registry:
-            raise WorkflowValidationError(f"Workflow [{workflow_id}] not found in workflows directory.")
-        
-        return self._registry[workflow_id]
+    def get(self, key: str) -> Optional[WorkflowConfig]:
+        """Retrieves a workflow by full key or workflow_id."""
+        if not key:
+            return None
 
-    def list_workflows(self) -> List[str]:
-        """Returns a flat list of all registered workflow IDs."""
-        self._scan_and_load_workflows()
-        return list(self._registry.keys())
+        if key in self._workflows:
+            return self._workflows[key]
+
+        for full_key, wf in self._workflows.items():
+            if wf.workflow_id == key or full_key.endswith(f"/{key}"):
+                return wf
+
+        return None
+
+    def get_workflow(self, workflow_id: str) -> Optional[WorkflowConfig]:
+        return self.get(workflow_id)
+
+    def list_tree(self) -> Dict[str, Any]:
+        """Builds directory hierarchy matching physical folder layout."""
+        tree: Dict[str, Any] = {}
+        for key, wf in self._workflows.items():
+            if wf.workflow_type == "init" or wf.workflow_id.endswith("__init__"):
+                continue
+
+            folder_parts = [p for p in wf.domain_path.split("/") if p and p != "."]
+            curr = tree
+            for part in folder_parts:
+                curr = curr.setdefault(part, {})
+
+            curr.setdefault("__workflows__", []).append(wf)
+        return tree
 
     def list_workflows_grouped(self) -> Dict[str, List[str]]:
-        """Returns registered workflows grouped by their relative folder paths."""
-        self._scan_and_load_workflows()
-        return self._category_map
+        grouped: Dict[str, List[str]] = {}
+        for key, wf in self._workflows.items():
+            if wf.workflow_type == "init" or wf.workflow_id.endswith("__init__"):
+                continue
+            cat = wf.domain_path or "general"
+            grouped.setdefault(cat, []).append(wf.workflow_id)
+        return grouped

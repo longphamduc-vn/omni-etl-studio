@@ -1,42 +1,65 @@
-    ./config/settings.py
-    ./config/__init__.py
-    ./tests
-    ./core/common/schemas.py
-    ./core/common/logger.py
-    ./core/common/exceptions.py
-    ./core/storage/context.py
-    ./core/engine/runner.py
-    ./core/engine/evaluator.py
-    ./core/engine/resolver.py
-    ./core/engine/operators/registry.py
-    ./core/engine/operators/python/custom_script.py
-    ./core/engine/operators/python/__init__.py
-    ./core/engine/operators/base.py
-    ./core/engine/operators/duckdb/reshape.py
-    ./core/engine/operators/duckdb/aggregate.py
-    ./core/engine/operators/duckdb/enrichment.py
-    ./core/engine/operators/duckdb/cleaning.py
-    ./core/engine/operators/duckdb/__init__.py
-    ./core/engine/operators/duckdb/join.py
-    ./core/engine/operators/__init__.py
-    ./core/engine/filter.py
-    ./core/engine/transformer.py
-    ./core/registry/workflow_registry.py
-    ./core/registry/validator.py
-    ./core/__init__.py
-    ./app.py
-    ./ui/components/converter_widget.py
-    ./ui/components/input_builder.py
-    ./ui/components/xml_converter.py
-    ./ui/components/workflow_editor.py
-    ./ui/components/duckdb_explorer.py
-    ./ui/components/execution_runner.py
-    ./ui/components/workflow_flow.py
-    ./ui/components/__init__.py
-    ./ui/__init__.py
-    ./all_code.py
-    ./mock-server/test_xml_api.py
-    ./mock-server/main.py
-    ./drivers/base.py
-    ./drivers/nexacro.py
-    ./drivers/__init__.py
+./config/settings.py
+./config/__init__.py
+./tests/integration/test_pipeline_e2e.py
+./tests/mocks/nexacro_mock_server.py
+./tests/unit/test_nexacro_xml_json.py
+./tests/unit/test_context.py
+./tests/unit/test_nexacro_driver.py
+./tests/unit/test_operators.py
+./tests/unit/test_evaluator.py
+./tests/unit/test_transformer.py
+./tests/unit/test_duckdb_operators_extended.py
+./tests/unit/test_validator.py
+./tests/unit/test_duckdb_operators.py
+./tests/unit/test_runner.py
+./core/lifecycle/init_handler.py
+./core/lifecycle/__init__.py
+./core/common/schemas.py
+./core/common/logger.py
+./core/common/exceptions.py
+./core/common/__init__.py
+./core/storage/context.py
+./core/storage/__init__.py
+./core/engine/runner.py
+./core/engine/evaluator.py
+./core/engine/resolver.py
+./core/engine/operators/registry.py
+./core/engine/operators/python/custom_script.py
+./core/engine/operators/python/__init__.py
+./core/engine/operators/base.py
+./core/engine/operators/duckdb/transform.py
+./core/engine/operators/duckdb/accumulate.py
+./core/engine/operators/duckdb/__init__.py
+./core/engine/operators/__init__.py
+./core/engine/__init__.py
+./core/engine/transformer.py
+./core/registry/workflow_registry.py
+./core/registry/validator.py
+./core/registry/__init__.py
+./core/__init__.py
+./app.py
+./ui/views/domain_tree_view.py
+./ui/styles/__init__.py
+./ui/styles/theme.py
+./ui/components/converter_widget.py
+./ui/components/input_builder.py
+./ui/components/sidebar.py
+./ui/components/workflow_editor.py
+./ui/components/execution_view.py
+./ui/components/execution_runner.py
+./ui/components/retry_modal.py
+./ui/components/workflow_flow.py
+./ui/components/duckdb_viewer.py
+./ui/components/presentation_grid.py
+./ui/components/url_sync.py
+./ui/components/tree_navigation.py
+./ui/components/__init__.py
+./ui/styles.py
+./ui/__init__.py
+./mock-server/test_xml_api.py
+./mock-server/main.py
+./drivers/base.py
+./drivers/excel_ingest.py
+./drivers/nexacro.py
+./drivers/__init__.py
+./drivers/rest.py

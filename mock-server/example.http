@@ -1,11 +1,32 @@
-### Case 1: Tìm kiếm sản phẩm "Thời trang" và còn hàng "IN_STOCK"
-POST http://127.0.0.1:8000/api/nexacro/xml/products/search-list
+### Case 0: Đăng nhập cấp Token xác thực (Trả về ds_token)
+POST http://127.0.0.1:8000/api/auth/login
 Content-Type: application/xml
 Accept: application/xml
 
 <?xml version="1.0" encoding="utf-8"?>
 <Root xmlns="http://tobesoft.com">
-    <!-- Dataset 1: Điều kiện lọc theo dữ liệu thật -->
+    <Dataset id="ds_login">
+        <ColumnInfo>
+            <Column id="client_id" type="STRING" size="256"/>
+        </ColumnInfo>
+        <Rows>
+            <Row>
+                <Col id="client_id">ems_client_app</Col>
+            </Row>
+        </Rows>
+    </Dataset>
+</Root>
+
+###
+
+### Case 1: Tìm kiếm sản phẩm "Thời trang" và còn hàng "IN_STOCK"
+POST http://127.0.0.1:8000/api/nexacro/xml/products/search-list
+Content-Type: application/xml
+Accept: application/xml
+Authorization: Bearer ems_bearer_token_secret_xyz123
+
+<?xml version="1.0" encoding="utf-8"?>
+<Root xmlns="http://tobesoft.com">
     <Dataset id="ds_search">
         <ColumnInfo>
             <Column id="category" type="STRING" size="256"/>
@@ -19,7 +40,6 @@ Accept: application/xml
         </Rows>
     </Dataset>
 
-    <!-- Dataset 2: Danh sách product_id cần tìm đích danh -->
     <Dataset id="ds_id_list">
         <ColumnInfo>
             <Column id="product_id" type="STRING" size="256"/>
@@ -28,8 +48,6 @@ Accept: application/xml
             <Row>
                 <Col id="product_id">SP-001</Col>
             </Row>
-        </Rows>
-        <Rows>
             <Row>
                 <Col id="product_id">SP-002</Col>
             </Row>
@@ -39,14 +57,14 @@ Accept: application/xml
 
 ###
 
-### Case 2: Tra cứu chi tiết sản phẩm (Trả về 3 Datasets: master, inventory, pricing)
+### Case 2: Tra cứu chi tiết sản phẩm (Trả về 3 Datasets: ds_master, ds_inventory, ds_pricing)
 POST http://127.0.0.1:8000/api/nexacro/xml/products/detail
 Content-Type: application/xml
 Accept: application/xml
+Authorization: Bearer ems_bearer_token_secret_xyz123
 
 <?xml version="1.0" encoding="utf-8"?>
 <Root xmlns="http://tobesoft.com">
-    <!-- Dataset điều kiện bắt buộc đúng ID là ds_condition -->
     <Dataset id="ds_condition">
         <ColumnInfo>
             <Column id="product_id" type="STRING" size="256"/>

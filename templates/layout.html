@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workflow Management Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full text-slate-100 flex overflow-hidden">
+
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
+    <div>
+      <!-- App Brand Logo -->
+      <div class="h-16 px-6 flex items-center gap-3 border-b border-slate-800/80">
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
+          WF
+        </div>
+        <div>
+          <h1 class="font-bold text-white tracking-wide text-sm">Pipeline Studio</h1>
+          <p class="text-[11px] text-slate-400">v2.4 • Engine Active</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tree -->
+      <nav class="p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-8rem)]">
+        <!-- Overview Section -->
+        <div>
+          <div class="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            Tổng quan
+          </div>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-indigo-600/10 text-indigo-400 font-medium text-sm transition-all hover:bg-indigo-600/20">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            Dashboard
+          </a>
+        </div>
+
+        <!-- Workflow Domains Section -->
+        <div>
+          <div class="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            Workflow Domains
+          </div>
+          <div class="space-y-1">
+            <!-- Group 1: EMS -->
+            <details class="group" open>
+              <summary class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 rounded-lg cursor-pointer text-sm font-medium transition-colors">
+                <span class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                  EMS Domain
+                </span>
+                <svg class="w-3.5 h-3.5 transition-transform group-open:rotate-90 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </summary>
+              <div class="pl-8 pr-2 py-1 space-y-1 text-xs">
+                <a href="#" class="flex items-center justify-between py-1.5 px-2.5 rounded-md text-slate-200 bg-slate-800/80 font-medium transition-colors">
+                  <span>PO Remain Sync</span>
+                  <span class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </a>
+                <a href="#" class="flex items-center justify-between py-1.5 px-2.5 rounded-md text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">
+                  <span>Inventory Tracking</span>
+                  <span class="h-2 w-2 rounded-full bg-amber-500/80" title="Paused"></span>
+                </a>
+              </div>
+            </details>
+
+            <!-- Group 2: Core System Init -->
+            <details class="group">
+              <summary class="flex items-center justify-between px-3 py-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 rounded-lg cursor-pointer text-sm font-medium transition-colors">
+                <span class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                  System Initialization
+                </span>
+                <svg class="w-3.5 h-3.5 transition-transform group-open:rotate-90 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </summary>
+              <div class="pl-8 pr-2 py-1 space-y-1 text-xs">
+                <a href="#" class="block py-1.5 px-2.5 rounded-md text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">
+                  DuckDB Schema Init
+                </a>
+              </div>
+            </details>
+          </div>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Footer Profile & System Info -->
+    <div class="p-4 border-t border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-400 text-xs">
+          OP
+        </div>
+        <div class="text-xs">
+          <div class="font-medium text-slate-200">Operator Admin</div>
+          <div class="text-slate-500">DuckDB Engine</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="flex-1 flex flex-col min-w-0 bg-slate-950">
+    <!-- Header -->
+    <header class="h-16 border-b border-slate-800 px-8 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-semibold text-white">EMS PO Remain Workflow</h2>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Running
+        </span>
+      </div>
+    </header>
+
+    <!-- Main Workspace / Workflow View -->
+    <div class="flex-1 p-8 overflow-y-auto">
+      <div class="max-w-5xl mx-auto space-y-6">
+        <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-sm">
+          <h3 class="text-sm font-semibold text-slate-300 mb-1">Workflow Information</h3>
+          <p class="text-xs text-slate-400">ID: ems_po_remain_sync | Path: ems/po_remain</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</body>
+</html>

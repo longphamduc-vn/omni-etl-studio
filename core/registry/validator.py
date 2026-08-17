@@ -1,40 +1,71 @@
-import json
-from typing import Any, Dict
-from core.common.exceptions import WorkflowValidationError
+# ==============================================================================
+# Filepath: core/registry/validator.py
+# Updated_at: 2026-08-16 17:35:00
+# Description: Validates workflow configuration schemas and DAG step integrity.
+# ==============================================================================
+
+from typing import Any, Dict, List, Tuple
+from pydantic import ValidationError
+
+from core.common.exceptions import PipelineError
 from core.common.logger import log
 from core.common.schemas import WorkflowConfig
+from drivers.base import DriverRegistry
 
 
 class WorkflowValidator:
-    """Validates pipeline JSON dictionaries or files against Pydantic schema contracts."""
+    """Validates workflow configuration rules and DAG step references."""
 
     @staticmethod
-    def validate_dict(config_dict: Dict[str, Any]) -> WorkflowConfig:
-        """Validates a raw dictionary and parses it into a typed WorkflowConfig model."""
+    def validate_schema(raw_cfg: Dict[str, Any]) -> WorkflowConfig:
+        """Parses raw JSON dict into WorkflowConfig model and checks Pydantic rules."""
         try:
-            workflow_config = WorkflowConfig(**config_dict)
-            
-            # Semantic checks: ensure step_ids are unique within the workflow
-            step_ids = [step.step_id for step in workflow_config.steps]
-            if len(step_ids) != len(set(step_ids)):
-                raise WorkflowValidationError("Duplicate step_id values detected in workflow steps.")
-
-            log.debug(f"Workflow '{workflow_config.workflow_id}' successfully validated.")
-            return workflow_config
-
-        except WorkflowValidationError:
-            raise
-        except Exception as e:
-            raise WorkflowValidationError(f"Workflow validation failure: {str(e)}")
+            return WorkflowConfig(**raw_cfg)
+        except ValidationError as ve:
+            log.error(f"[VALIDATION ERROR] Workflow schema invalid: {str(ve)}")
+            raise PipelineError(f"Invalid workflow configuration schema: {str(ve)}")
 
     @classmethod
-    def validate_file(cls, file_path: str) -> WorkflowConfig:
-        """Loads a JSON file and validates its contents."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return cls.validate_dict(data)
-        except json.JSONDecodeError as jde:
-            raise WorkflowValidationError(f"Invalid JSON format in workflow file [{file_path}]: {str(jde)}")
-        except Exception as e:
-            raise WorkflowValidationError(f"Failed to load workflow file [{file_path}]: {str(e)}")
+    def validate_workflow(cls, workflow: WorkflowConfig) -> Tuple[bool, List[str]]:
+        """Executes deep validation checks across workflow steps and drivers."""
+        errors: List[str] = []
+        step_ids = set()
+
+        if not workflow.steps:
+            errors.append("Workflow must contain at least one execution step.")
+
+        for idx, step in enumerate(workflow.steps):
+            # 1. Check duplicate step_id
+            if step.step_id in step_ids:
+                errors.append(f"Step [{idx}]: Duplicate step_id '{step.step_id}' found.")
+            step_ids.add(step.step_id)
+
+            # 2. Check registered driver existence
+            if step.driver not in ["passthrough", "none", ""]:
+                try:
+                    DriverRegistry.get(step.driver)
+                except KeyError:
+                    errors.append(f"Step [{step.step_id}]: Driver '{step.driver}' is not registered.")
+
+            # 3. Check chained_loop input table declaration
+            if step.mode == "chained_loop" and not step.inputs:
+                errors.append(f"Step [{step.step_id}]: Mode 'chained_loop' requires 'inputs' declaration.")
+
+            # 4. Validate DAG input dependencies
+            for in_dataset in step.inputs:
+                if not in_dataset:
+                    continue
+                # Input can be global or produced by a prior step
+                # Warning if input dataset does not match any prior step output
+                prior_outputs = {s.output_dataset for s in workflow.steps[:idx]}
+                if in_dataset not in prior_outputs and not in_dataset.startswith("ds_"):
+                    log.warning(
+                        f"[VALIDATION WARNING] Step [{step.step_id}] reads '{in_dataset}' "
+                        f"which is not produced by any preceding step."
+                    )
+
+        is_valid = len(errors) == 0
+        if not is_valid:
+            log.error(f"[VALIDATION FAILED] Workflow [{workflow.workflow_id}] failed validation: {errors}")
+
+        return is_valid, errors

@@ -1,3 +1,13 @@
-from core.engine.operators.duckdb import aggregate, cleaning, enrichment, join, reshape
+# ==============================================================================
+# Filepath: core/engine/operators/duckdb/__init__.py
+# Updated_at: 2026-08-16 18:13:00
+# Description: DuckDB operators package exports.
+# ==============================================================================
 
-__all__ = ["aggregate", "cleaning", "enrichment", "join", "reshape"]
+from core.engine.operators.duckdb.transform import SqlTransformOperator
+from core.engine.operators.duckdb.accumulate import AccumulateDataOperator
+
+__all__ = [
+    "SqlTransformOperator",
+    "AccumulateDataOperator",
+]

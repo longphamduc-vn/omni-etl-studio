@@ -1,33 +1,39 @@
-class OmniETLException(Exception):
-    """Base exception class for all errors in omni-etl-studio."""
+# ==============================================================================
+# Filepath: core/common/exceptions.py
+# Updated_at: 2026-08-16 17:25:00
+# Description: Custom exception hierarchy.
+# ==============================================================================
+
+
+class PipelineError(Exception):
+    """Base exception class for all pipeline errors."""
+
     pass
 
 
-class WorkflowValidationError(OmniETLException):
-    """Raised when JSON workflow schemas or catalog definitions fail validation."""
+class BusinessError(PipelineError):
+    """Exception raised for business-level API errors (errcode = -1)."""
+
+    def __init__(self, code: int, msg: str, payload: dict = None):
+        self.code = code
+        self.msg = msg
+        self.payload = payload or {}
+        super().__init__(f"Business error [{code}]: {msg}")
+
+
+class RetryError(PipelineError):
+    """Exception raised when maximum retry attempts are exhausted."""
+
     pass
 
 
-class EvaluatorError(OmniETLException):
-    """Raised when variable resolution or JsonPath extraction fails."""
+class EvaluatorError(PipelineError):
+    """Exception raised during variable or JSONPath resolution."""
+
     pass
 
 
-class FilterError(OmniETLException):
-    """Raised during pre-call record filtering execution."""
-    pass
+class DriverError(PipelineError):
+    """Exception raised for protocol invocation errors."""
 
-
-class TransformationError(OmniETLException):
-    """Raised when data transformation operators (DuckDB or Python) fail."""
-    pass
-
-
-class DriverError(OmniETLException):
-    """Raised during protocol payload construction, network transport, or parsing."""
-    pass
-
-
-class StorageError(OmniETLException):
-    """Raised during DuckDB schema creation, table registration, or SQL execution."""
     pass
